@@ -283,7 +283,7 @@ app.put('/api/assistence/salida/:id', (req, res) => {
     const assistenceId = results[0].id;
     const exitTime = new Date();
 
-    // Actualizar el registro con la hora de salida (usando `exit_time`)
+    // Actualizar el registro con la hora de salida (usando `exit_time`)aaa
     const updateExitQuery = `
       UPDATE assistence SET exit_time = ? WHERE id = ?
     `;
