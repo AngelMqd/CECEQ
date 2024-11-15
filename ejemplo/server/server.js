@@ -10,7 +10,11 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-
+const cron = require('node-cron');
+cron.schedule('59 23 * * *', () => {
+  console.log('Cron job ejecutado a las 23:59');
+ 
+});
 // Base path para almacenar archivos
 const mediaBasePath = path.join('C:/Users/100097567/Documents/CECEQ/media');
 app.use('/media/photos', express.static(path.join('C:/Users/100097567/Documents/CECEQ/media/photos')));
@@ -281,9 +285,9 @@ app.put('/api/assistence/salida/:id', (req, res) => {
     }
 
     const assistenceId = results[0].id;
-    const exitTime = new Date();
+    const exitTime = new Date().toISOString().slice(0, 19).replace('T', ' '); // Formato 'YYYY-MM-DD HH:MM:SS'
 
-    // Actualizar el registro con la hora de salida (usando `exit_time`)aaa
+    // Actualizar el registro con la hora de salida
     const updateExitQuery = `
       UPDATE assistence SET exit_time = ? WHERE id = ?
     `;
@@ -297,6 +301,7 @@ app.put('/api/assistence/salida/:id', (req, res) => {
     });
   });
 });
+
 
 // Reinicio diario de la tabla de asistencias a las 23:59
 cron.schedule('59 23 * * *', () => {
