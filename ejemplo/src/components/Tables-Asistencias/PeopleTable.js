@@ -49,6 +49,26 @@ function PeopleTable() {
     }
   };
 
+  const handleEntrada = async (personId) => {
+    try {
+      await axios.post(`http://localhost:3001/api/assistence/entrada/${personId}`);
+      alert(`Entrada registrada para el usuario con ID: ${personId}`);
+    } catch (error) {
+      console.error('Error registrando entrada:', error);
+      alert('Hubo un error al registrar la entrada');
+    }
+  };
+
+  const handleSalida = async (personId) => {
+    try {
+      await axios.put(`http://localhost:3001/api/assistence/salida/${personId}`);
+      alert(`Salida registrada para el usuario con ID: ${personId}`);
+    } catch (error) {
+      console.error('Error registrando salida:', error);
+      alert('Hubo un error al registrar la salida');
+    }
+  };
+
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -106,10 +126,10 @@ function PeopleTable() {
                   <TableCell align="center">{row.phone || 'N/A'}</TableCell>
                   <TableCell align="center">{row.status === 0 ? 'Activo' : 'Inactivo'}</TableCell>
                   <TableCell align="center">
-                    <Button variant="contained" color="primary">
+                    <Button variant="contained" color="primary" onClick={() => handleEntrada(row.id)}>
                       Entrada
                     </Button>
-                    <Button variant="contained" color="secondary" style={{ marginLeft: '8px' }}>
+                    <Button variant="contained" color="secondary" style={{ marginLeft: '8px' }} onClick={() => handleSalida(row.id)}>
                       Salida
                     </Button>
                   </TableCell>

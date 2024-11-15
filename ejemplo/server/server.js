@@ -212,40 +212,103 @@ app.listen(3001, () => {
   console.log('Servidor corriendo en el puerto 3001');
 });
 
+// Ruta para registrar la entrada
+app.post('/api/assistence/entrada/:folio', (req, res) => {
+  const folio = req.params.folio;
+  const currentDate = new Date();
+  const currentDateString = currentDate.toISOString().split('T')[0]; // Fecha en formato YYYY-MM-DD
 
-
-app.post('/api/assistence/entrada/:id', (req, res) => {
-  const main_persona_id = req.params.id;
-  const created_at = new Date();
-
-  const query = `
-    INSERT INTO assistence (main_persona_id, created_at)
-    VALUES (?, ?)
-  `;
-
-  db.query(query, [main_persona_id, created_at], (error, results) => {
-    if (error) {
-      console.error('Error registrando entrada:', error);
-      return res.status(500).json({ error: 'Error registrando entrada' });
+  // Buscar la persona por folio
+  const findPersonQuery = `SELECT id FROM main_persona WHERE folio = ?`;
+  db.query(findPersonQuery, [folio], (err, personResults) => {
+    if (err || personResults.length === 0) {
+      console.error('Error encontrando persona o folio no existente:', err);
+      return res.status(404).json({ error: 'Folio no encontrado' });
     }
-    res.status(200).json({ message: 'Entrada registrada correctamente', assistenceId: results.insertId });
+    const personId = personResults[0].id;
+
+    // Verificar si ya existe una entrada para este usuario hoy
+    const checkEntryQuery = `
+      SELECT id FROM assistence 
+      WHERE main_persona_id = ? AND DATE(created_at) = ?
+    `;
+    db.query(checkEntryQuery, [personId, currentDateString], (err, assistResults) => {
+      if (err) {
+        console.error('Error al verificar entrada:', err);
+        return res.status(500).json({ error: 'Error en el servidor' });
+      }
+
+      // Si ya existe una entrada para hoy, no se agrega otra
+      if (assistResults.length > 0) {
+        return res.status(409).json({ message: 'Ya se ha registrado una entrada hoy' });
+      }
+
+      // Insertar nueva entrada de asistencia
+      const insertEntryQuery = `
+        INSERT INTO assistence (main_persona_id, created_at)
+        VALUES (?, ?)
+      `;
+      db.query(insertEntryQuery, [personId, currentDate], (err, insertResults) => {
+        if (err) {
+          console.error('Error registrando entrada:', err);
+          return res.status(500).json({ error: 'Error registrando entrada' });
+        }
+        res.status(200).json({ message: 'Entrada registrada correctamente', assistenceId: insertResults.insertId });
+      });
+    });
   });
 });
 
-app.put('/api/assistence/salida/:assistenceId', (req, res) => {
-  const assistenceId = req.params.assistenceId;
-  const exit = new Date();
+// Ruta para registrar la salida
+app.put('/api/assistence/salida/:folio', (req, res) => {
+  const folio = req.params.folio;
+  const currentDateString = new Date().toISOString().split('T')[0]; // Fecha en formato YYYY-MM-DD
 
-  const query = `
-    UPDATE assistence SET exit = ? WHERE id = ?
-  `;
-
-  db.query(query, [exit, assistenceId], (error, results) => {
-    if (error) {
-      console.error('Error registrando salida:', error);
-      return res.status(500).json({ error: 'Error registrando salida' });
+  // Buscar la persona por folio
+  const findPersonQuery = `SELECT id FROM main_persona WHERE folio = ?`;
+  db.query(findPersonQuery, [folio], (err, personResults) => {
+    if (err || personResults.length === 0) {
+      console.error('Error encontrando persona o folio no existente:', err);
+      return res.status(404).json({ error: 'Folio no encontrado' });
     }
-    res.status(200).json({ message: 'Salida registrada correctamente' });
+    const personId = personResults[0].id;
+
+    // Verificar si existe una entrada hoy para esta persona
+    const findAssistenceQuery = `
+      SELECT id FROM assistence 
+      WHERE main_persona_id = ? AND DATE(created_at) = ? AND exit IS NULL
+    `;
+    db.query(findAssistenceQuery, [personId, currentDateString], (err, assistResults) => {
+      if (err || assistResults.length === 0) {
+        console.error('Error o no existe una entrada hoy:', err);
+        return res.status(404).json({ error: 'Debe registrar una entrada primero' });
+      }
+      const assistenceId = assistResults[0].id;
+
+      // Registrar la salida
+      const updateExitQuery = `
+        UPDATE assistence SET exit = ? WHERE id = ?
+      `;
+      db.query(updateExitQuery, [new Date(), assistenceId], (err) => {
+        if (err) {
+          console.error('Error registrando salida:', err);
+          return res.status(500).json({ error: 'Error registrando salida' });
+        }
+        res.status(200).json({ message: 'Salida registrada correctamente' });
+      });
+    });
+  });
+});
+
+// Reinicio diario de la tabla de asistencias a las 23:59
+cron.schedule('59 23 * * *', () => {
+  const truncateTableQuery = `TRUNCATE TABLE assistence`;
+  db.query(truncateTableQuery, (err) => {
+    if (err) {
+      console.error('Error al reiniciar la tabla de asistencias:', err);
+    } else {
+      console.log('Tabla de asistencias reiniciada correctamente');
+    }
   });
 });
 // Ruta para obtener asistencias de un día específico
