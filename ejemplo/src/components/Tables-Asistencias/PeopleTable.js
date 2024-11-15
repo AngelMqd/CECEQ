@@ -65,9 +65,13 @@ function PeopleTable() {
       alert(`Salida registrada para el usuario con ID: ${personId}`);
     } catch (error) {
       console.error('Error registrando salida:', error);
-      alert('Hubo un error al registrar la salida');
+      alert(
+        error.response?.data?.error ||
+        'Hubo un error al registrar la salida. Por favor, intente nuevamente.'
+      );
     }
   };
+  
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';

@@ -260,42 +260,40 @@ app.post('/api/assistence/entrada/:folio', (req, res) => {
 });
 
 // Ruta para registrar la salida
-app.put('/api/assistence/salida/:folio', (req, res) => {
-  const folio = req.params.folio;
-  const currentDateString = new Date().toISOString().split('T')[0]; // Fecha en formato YYYY-MM-DD
+app.put('/api/assistence/salida/:id', (req, res) => {
+  const main_persona_id = req.params.id;
+  const currentDate = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
 
-  // Buscar la persona por folio
-  const findPersonQuery = `SELECT id FROM main_persona WHERE folio = ?`;
-  db.query(findPersonQuery, [folio], (err, personResults) => {
-    if (err || personResults.length === 0) {
-      console.error('Error encontrando persona o folio no existente:', err);
-      return res.status(404).json({ error: 'Folio no encontrado' });
+  // Verificar si existe una entrada hoy para esta persona
+  const findEntryQuery = `
+    SELECT id FROM assistence 
+    WHERE main_persona_id = ? AND DATE(created_at) = ? AND exit_time IS NULL
+  `;
+
+  db.query(findEntryQuery, [main_persona_id, currentDate], (error, results) => {
+    if (error) {
+      console.error('Error verificando entrada:', error);
+      return res.status(500).json({ error: 'Error verificando entrada' });
     }
-    const personId = personResults[0].id;
 
-    // Verificar si existe una entrada hoy para esta persona
-    const findAssistenceQuery = `
-      SELECT id FROM assistence 
-      WHERE main_persona_id = ? AND DATE(created_at) = ? AND exit IS NULL
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'No hay registros de entrada para hoy o ya se registró una salida' });
+    }
+
+    const assistenceId = results[0].id;
+    const exitTime = new Date();
+
+    // Actualizar el registro con la hora de salida (usando `exit_time`)
+    const updateExitQuery = `
+      UPDATE assistence SET exit_time = ? WHERE id = ?
     `;
-    db.query(findAssistenceQuery, [personId, currentDateString], (err, assistResults) => {
-      if (err || assistResults.length === 0) {
-        console.error('Error o no existe una entrada hoy:', err);
-        return res.status(404).json({ error: 'Debe registrar una entrada primero' });
-      }
-      const assistenceId = assistResults[0].id;
 
-      // Registrar la salida
-      const updateExitQuery = `
-        UPDATE assistence SET exit = ? WHERE id = ?
-      `;
-      db.query(updateExitQuery, [new Date(), assistenceId], (err) => {
-        if (err) {
-          console.error('Error registrando salida:', err);
-          return res.status(500).json({ error: 'Error registrando salida' });
-        }
-        res.status(200).json({ message: 'Salida registrada correctamente' });
-      });
+    db.query(updateExitQuery, [exitTime, assistenceId], (error) => {
+      if (error) {
+        console.error('Error registrando salida:', error);
+        return res.status(500).json({ error: 'Error registrando salida' });
+      }
+      res.status(200).json({ message: 'Salida registrada correctamente', assistenceId });
     });
   });
 });
