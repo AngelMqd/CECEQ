@@ -20,7 +20,7 @@ cron.schedule('59 23 * * *', () => {
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'angel820',
+  password: 'Master12$',
   database: 'ceceq'
 });
 
