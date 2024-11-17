@@ -16,6 +16,12 @@ import './App.css';
 import RegisterPersonForm from './components/Views/RegisterPersonForm';
 import InicioYLogin from './components/InicioYLogin';
 import Asistencias from './components/Tables-Asistencias/Asistencias';
+import ControlPanel from './components/Views/ControlPanel';
+import Groups from './components/Views/Groups';
+import CRUDForm from './components/Crud/CRUDForm';
+import GroupsTable from './components/GroupsTable/GroupsTable';
+
+
 
 const theme = createTheme();
 
@@ -28,6 +34,16 @@ function App() {
   const [personas, setPersonas] = useState([]);
   const [ setSelectedPerson] = useState(null); // Corregido: ahora se usa correctamente
   const navigate = useNavigate();
+
+  const [groups, setGroups] = useState([]); // Estado para los grupos
+
+  const addGroup = (groupName) => {
+    setGroups((prevGroups) => [
+      ...prevGroups,
+      { id: prevGroups.length + 1, name: groupName },
+    ]);
+    navigate('/grupos'); // Redirige a la lista de grupos después de crear
+  };
 
   // Función de logout
   const handleLogout = () => {
@@ -53,21 +69,25 @@ function App() {
       case 'personas':
         navigate('/personas');
         break;
-      case 'perfil':
-        navigate('/perfil');
-        break;
       case 'asistencias':
         navigate('/asistencias');
-        break;
-      case 'disabilitys':
-        navigate('/disabilitys');
         break;
       case 'usuarios':
         navigate('/usuarios');
         break;
+      case 'disabilitys':
+        navigate('/disabilitys');
+        break;
+      case 'panelcontrol': // Manejo del panel de control
+        navigate('/panelcontrol');
+        break;
+      case 'grupos': // Manejo de grupos
+        navigate('/grupos');
+        break;
       default:
-        navigate('/');
-    }
+        navigate('/panelcontrol'); // Por defecto, carga el panel de control
+        break;
+    }    
   };
 
   // Función para seleccionar una persona y cambiar la vista
@@ -82,10 +102,24 @@ function App() {
   };
 
   useEffect(() => {
-    if (activeView === 'personas' && personas.length === 0) {
-      fetchPersonas();
+    const defaultRoute = '/'; // Ruta predeterminada
+    const navigableRoutes = [
+      '/panelcontrol',
+      '/personas',
+      '/asistencias',
+      '/usuarios',
+      '/disabilitys',
+      '/grupos',
+      '/crud',
+      '/groups-table',
+    ]; // Lista de rutas navegables
+  
+    if (navigableRoutes.includes(window.location.pathname) && activeView === '') {
+      navigate(defaultRoute); // Redirige a la ruta predeterminada
     }
-  }, [activeView, personas.length]);
+  }, [activeView, navigate]);
+  
+    
 
   // Función para obtener personas de la API
   const fetchPersonas = () => {
@@ -163,12 +197,30 @@ function App() {
                       path="/disabilitys"
                       element={<Disabilitys onLogout={handleLogout} />}
                     />
+                    <Route
+                      path="/crud"
+                      element={<CRUDForm addGroup={addGroup} />}
+                    />
+                    <Route
+                    path="/panelcontrol"
+                    element={<ControlPanel addGroup={addGroup} />}
+                    />
+                    <Route
+                    path="/grupos"
+                    element={<Groups groups={groups} />}
+                    />
+                    <Route
+                    path="/groups-table"
+                    element={<GroupsTable />}
+                    />
+                    <Route path="/" element={<h1>Contenido Principal</h1>} />
+                    <Route path="/panelcontrol" element={<ControlPanel />} />
+                    <Route path="/grupos" element={<Groups />} />
                     <Route path="/perfil/:id" element={<UserProfile />} />
                     <Route path="/registrar-persona" element={<RegisterPersonForm />} />
                     <Route path="/crud" element={<Crud />} />
                     <Route path="/editar-perfil/:id" element={<EditProfile />} />
                     <Route path="/historial-cambios/:id" element={<ChangeHistory />} />
-                    <Route path="/" element={<h1>Contenido Principal</h1>} />
                   </Routes>
                 </div>
               </div>

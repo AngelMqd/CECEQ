@@ -1,26 +1,19 @@
 import React from 'react';
+import { Box, Heading } from '@chakra-ui/react';
+import CRUDForm from '../Crud/CRUDForm'; // Ajusta la ruta si es necesario
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Heading } from '@chakra-ui/react';
-import CRUDForm from '../components/CRUDForm';
 
-const ControlPanel = () => {
+const ControlPanel = ({ addGroup }) => {
   const navigate = useNavigate();
 
-  const handleNavigateToGroups = () => {
+  const handleCreateGroup = (groupName) => {
+    addGroup(groupName); // Agrega el grupo al estado global
     navigate('/grupos'); // Redirige a la vista de grupos
   };
 
   return (
     <Box p={4}>
-      <Heading mb={4}>Panel de Control</Heading>
-      <CRUDForm /> {/* CRUD para crear grupos */}
-      <Button 
-        colorScheme="purple" 
-        mt={4} 
-        onClick={handleNavigateToGroups}
-      >
-        Ver Grupos
-      </Button>
+      <CRUDForm addGroup={handleCreateGroup} /> {/* Pasa la función */}
     </Box>
   );
 };
