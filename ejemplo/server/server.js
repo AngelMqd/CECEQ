@@ -10,11 +10,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-const cron = require('node-cron');
-cron.schedule('59 23 * * *', () => {
-  console.log('Cron job ejecutado a las 23:59');
- 
-});
+
 
 // Configuración de la conexión a la base de datos
 const db = mysql.createConnection({
@@ -129,36 +125,33 @@ app.post('/api/crud', upload.fields([
   });
 });
 
-// Ruta para obtener una persona y su foto/documentos
-app.get('/api/personas/:id', (req, res) => {
-  const personId = req.params.id;
+// Ruta para obtener todas las personas y sus fotos/documentos
+app.get('/api/personas', (req, res) => {
   const query = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
            address, estate, \`foreign\`, phone, occupation, last_studies, 
            address_proof, id_card, created_at, updated_at, status
     FROM main_persona
-    WHERE id = ?
   `;
 
-  db.query(query, [personId], (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       console.error('Error al obtener los datos de la base de datos:', err);
       return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
     }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Persona no encontrada' });
-    }
 
-    const person = results[0];
+    // Convierte las fotos y documentos en Base64
+    const processedResults = results.map((person) => ({
+      ...person,
+      photo: person.photo ? person.photo.toString('base64') : null,
+      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
+      id_card: person.id_card ? person.id_card.toString('base64') : null,
+    }));
 
-    // Convierte datos binarios a Base64 para enviarlos en la respuesta
-    person.photo = person.photo ? person.photo.toString('base64') : null;
-    person.address_proof = person.address_proof ? person.address_proof.toString('base64') : null;
-    person.id_card = person.id_card ? person.id_card.toString('base64') : null;
-
-    res.json(person);
+    res.json(processedResults);
   });
 });
+
 
 app.get('/api/user-avatar/:id', (req, res) => {
   const userId = req.params.id;
