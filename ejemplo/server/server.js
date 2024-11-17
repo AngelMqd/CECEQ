@@ -10,17 +10,13 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-const cron = require('node-cron');
-cron.schedule('59 23 * * *', () => {
-  console.log('Cron job ejecutado a las 23:59');
- 
-});
+
 
 // Configuración de la conexión a la base de datos
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'Master12$',
+  password: 'angel820',
   database: 'ceceq'
 });
 
@@ -93,13 +89,21 @@ const upload = multer({
   }
 });
 
-// Ruta para crear una nueva persona con foto y documentos en la base de datos
-app.post('/api/crud', upload.fields([
-  { name: 'photo' },
-  { name: 'address_proof' },
-  { name: 'id_card' }
-]), (req, res) => {
-  const currentDate = new Date();
+app.post('/api/crud', upload.fields([{ name: 'photo' }, { name: 'address_proof' }, { name: 'id_card' }]), (req, res) => {
+  const {
+    folio,
+    name,
+    surname,
+    birth_date,
+    gender,
+    civil_status,
+    address,
+    estate,
+    foreign: isForeign,
+    phone,
+    occupation,
+    last_studies,
+  } = req.body;
 
   const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
   const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
@@ -107,85 +111,94 @@ app.post('/api/crud', upload.fields([
 
   const query = `
     INSERT INTO main_persona (
-      folio, name, surname, birth_date, gender, civil_status, 
-      address, estate, \`foreign\`, phone, occupation, last_studies,
-      photo, address_proof, id_card, created_at, updated_at, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      folio, name, surname, birth_date, gender, civil_status, address, estate,
+      \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const values = [
-    req.body.folio, req.body.name, req.body.surname, req.body.birth_date, req.body.gender,
-    req.body.civil_status, req.body.address, req.body.estate, req.body.foreign,
-    req.body.phone, req.body.occupation, req.body.last_studies, photo,
-    addressProof, idCard, currentDate, currentDate, 0
-  ];
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error('Error al insertar los datos:', err);
-      return res.status(500).json({ error: 'Error al insertar los datos en la base de datos' });
+  db.query(
+    query,
+    [
+      folio,
+      name,
+      surname,
+      birth_date,
+      gender,
+      civil_status,
+      address,
+      estate,
+      isForeign,
+      phone,
+      occupation,
+      last_studies,
+      photo,
+      addressProof,
+      idCard,
+    ],
+    (err) => {
+      if (err) {
+        console.error('Error al guardar en la base de datos:', err);
+        return res.status(500).json({ error: 'Error al guardar en la base de datos' });
+      }
+      res.json({ message: 'Persona registrada con éxito' });
     }
-    res.status(200).json({ message: 'Persona registrada exitosamente', id: result.insertId });
-  });
+  );
 });
-
-// Ruta para obtener una persona y su foto/documentos
-app.get('/api/personas/:id', (req, res) => {
-  const personId = req.params.id;
+// Ruta para obtener todas las personas y sus fotos/documentos
+app.get('/api/personas', (req, res) => {
   const query = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
            address, estate, \`foreign\`, phone, occupation, last_studies, 
            address_proof, id_card, created_at, updated_at, status
     FROM main_persona
-    WHERE id = ?
   `;
 
-  db.query(query, [personId], (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       console.error('Error al obtener los datos de la base de datos:', err);
       return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
     }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Persona no encontrada' });
-    }
 
-    const person = results[0];
+    // Convierte las fotos y documentos en Base64
+    const processedResults = results.map((person) => ({
+      ...person,
+      photo: person.photo ? person.photo.toString('base64') : null,
+      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
+      id_card: person.id_card ? person.id_card.toString('base64') : null,
+    }));
 
-    // Convierte datos binarios a Base64 para enviarlos en la respuesta
-    person.photo = person.photo ? person.photo.toString('base64') : null;
-    person.address_proof = person.address_proof ? person.address_proof.toString('base64') : null;
-    person.id_card = person.id_card ? person.id_card.toString('base64') : null;
-
-    res.json(person);
+    res.json(processedResults);
   });
 });
+
 
 app.get('/api/user-avatar/:id', (req, res) => {
   const userId = req.params.id;
 
-  // Consulta para obtener la foto desde main_persona usando el main_persona_id relacionado
   const query = `
-    SELECT mp.photo 
+    SELECT mp.photo
     FROM auth_user au
-    INNER JOIN main_persona mp ON au.main_persona_id = mp.id
+    JOIN main_persona mp ON au.main_persona_id = mp.id
     WHERE au.id = ?
   `;
 
   db.query(query, [userId], (error, results) => {
     if (error) {
-      console.error('Error al obtener la foto:', error);
-      return res.status(500).json({ error: 'Error al obtener la foto del usuario' });
+      console.error('Error en la consulta:', error);
+      return res.status(500).json({ error: 'Error en el servidor' });
     }
 
-    if (results.length === 0 || !results[0].photo) {
-      return res.status(404).json({ error: 'Foto no encontrada' });
+    if (results.length > 0 && results[0].photo) {
+      const photoBase64 = `data:image/jpeg;base64,${results[0].photo.toString('base64')}`;
+      res.json({ avatar: photoBase64 });
+    } else {
+      res.status(404).json({ message: 'Foto no encontrada' });
     }
-
-    // Devuelve la foto como base64
-    const photo = results[0].photo.toString('base64');
-    res.json({ avatar: `data:image/jpeg;base64,${photo}` });
   });
 });
+
+
+
 
 
 

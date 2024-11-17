@@ -22,7 +22,7 @@ function FormInputs({ formData, handleChange, setFormData }) {
         InputLabelProps={{ shrink: true }}
         sx={{ mt: 2 }}
       />
-
+<TextField label="Genero" name="gender" value={formData.gender} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
       <TextField label="Estado Civil" name="civil_status" value={formData.civil_status} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
       <TextField label="Dirección" name="address" value={formData.address} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
       <TextField label="Estado/Provincia" name="estate" value={formData.estate} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />

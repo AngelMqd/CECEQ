@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TablePagination, TableRow, Button, Avatar } from '@mui/material';
-import { PictureAsPdf, SaveAlt } from '@mui/icons-material'; 
-import UserSearch from './UserSearch'; 
+import { PictureAsPdf, SaveAlt } from '@mui/icons-material';
+import UserSearch from './UserSearch';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; 
-import * as XLSX from 'xlsx'; 
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import EnhancedTableHead from './EnhancedTableHead';
-import CustomColumnSelect from './CustomColumnSelect'; 
+import CustomColumnSelect from './CustomColumnSelect';
 
 const headCells = [
-  { id: 'folio', numeric: false, disablePadding: false, label: 'Folio', defaultChecked: true }, 
-  { id: 'photo', numeric: false, disablePadding: false, label: 'Foto', defaultChecked: true }, 
+  { id: 'folio', numeric: false, disablePadding: false, label: 'Folio', defaultChecked: true },
+  { id: 'photo', numeric: false, disablePadding: false, label: 'Foto', defaultChecked: true },
   { id: 'name', numeric: false, disablePadding: false, label: 'Nombre', defaultChecked: true },
   { id: 'surname', numeric: false, disablePadding: false, label: 'Apellido', defaultChecked: true },
   { id: 'gender', numeric: false, disablePadding: false, label: 'Género', defaultChecked: true },
@@ -45,7 +45,11 @@ function PeopleTable({ onSelectPerson }) {
   useEffect(() => {
     axios.get('http://localhost:3001/api/personas')
       .then(response => {
-        setRows(response.data);
+        const updatedRows = response.data.map(row => ({
+          ...row,
+          photo: row.photo ? `data:image/jpeg;base64,${row.photo}` : null, // Convertir Base64 a URL de imagen
+        }));
+        setRows(updatedRows);
       })
       .catch(error => {
         console.error('Error fetching data:', error);
@@ -141,11 +145,11 @@ function PeopleTable({ onSelectPerson }) {
           justifyContent: 'space-between',
           mb: 1,
           alignItems: 'center',
-          flexWrap: 'wrap', 
-          gap: 2, 
-          '@media (max-width: 768px)': { 
+          flexWrap: 'wrap',
+          gap: 2,
+          '@media (max-width: 768px)': {
             gap: 1,
-            flexDirection: 'row', 
+            flexDirection: 'row',
             justifyContent: 'center',
           },
         }}
@@ -157,42 +161,42 @@ function PeopleTable({ onSelectPerson }) {
           <Button
             onClick={exportToPDF}
             variant="outlined"
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.3, 
-              padding: '2px 6px', 
-              fontSize: '12px', 
-              color: '#d32f2f', 
-              borderColor: '#f8d7da', 
-              backgroundColor: 'rgba(248, 215, 218, 0.3)', 
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.3,
+              padding: '2px 6px',
+              fontSize: '12px',
+              color: '#d32f2f',
+              borderColor: '#f8d7da',
+              backgroundColor: 'rgba(248, 215, 218, 0.3)',
               '&:hover': {
-                backgroundColor: 'rgba(248, 215, 218, 0.5)', 
+                backgroundColor: 'rgba(248, 215, 218, 0.5)',
                 borderColor: '#d32f2f',
               }
             }}
-            startIcon={<PictureAsPdf fontSize="small" />} 
+            startIcon={<PictureAsPdf fontSize="small" />}
           >
             PDF
           </Button>
           <Button
             onClick={exportToExcel}
             variant="outlined"
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.3, 
-              padding: '5px 8px', 
-              fontSize: '12px', 
-              color: '#388e3c', 
-              borderColor: '#d4edda', 
-              backgroundColor: 'rgba(212, 237, 218, 0.3)', 
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.3,
+              padding: '5px 8px',
+              fontSize: '12px',
+              color: '#388e3c',
+              borderColor: '#d4edda',
+              backgroundColor: 'rgba(212, 237, 218, 0.3)',
               '&:hover': {
-                backgroundColor: 'rgba(212, 237, 218, 0.5)', 
+                backgroundColor: 'rgba(212, 237, 218, 0.5)',
                 borderColor: '#388e3c',
               }
             }}
-            startIcon={<SaveAlt fontSize="small" />} 
+            startIcon={<SaveAlt fontSize="small" />}
           >
             Excel
           </Button>
@@ -215,10 +219,10 @@ function PeopleTable({ onSelectPerson }) {
                     <TableCell key={col.id} align="center">
                       {col.id === 'photo' ? (
                         row[col.id] ? (
-                          <Avatar 
-                            src={`http://localhost:3001${row[col.id]}`} 
-                            alt="Avatar" 
-                            onError={handleImageError} 
+                          <Avatar
+                            src={row[col.id]}
+                            alt="Avatar"
+                            onError={handleImageError}
                           />
                         ) : (
                           <Avatar sx={{ bgcolor: 'grey' }}>N/A</Avatar> // Avatar gris si no hay foto
