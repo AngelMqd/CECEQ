@@ -1,8 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import BadgeAvatars from './badgeAvatars';
 import SearchBar from './searchBar';
-import { IconButton, Box, Text, HStack, Input, InputGroup, InputLeftElement, useColorModeValue, useBreakpointValue, Collapse } from '@chakra-ui/react';
-import { ExitToApp, Tune, Search, Settings, Notifications, Menu, Add } from '@mui/icons-material';
+import {
+  IconButton,
+  Box,
+  Text,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  useColorModeValue,
+  useBreakpointValue,
+  Collapse,
+} from '@chakra-ui/react';
+import {
+  ExitToApp,
+  Tune,
+  Search,
+  Settings,
+  Notifications,
+  Menu,
+  Add,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -24,7 +43,7 @@ const Header = ({ toggleSidebar, onLogout }) => {
         }
 
         const parsedUser = JSON.parse(storedUser); // Parseamos el JSON
-        const userId = parsedUser?.id; // Obtenemos el ID del usuario
+        const userId = parsedUser?.id; // Obtenemos el ID del usuario de la tabla `auth_user`
         if (!userId) {
           console.error('El ID del usuario no está disponible.');
           return;
@@ -33,7 +52,7 @@ const Header = ({ toggleSidebar, onLogout }) => {
         // Obtenemos la información del usuario y su foto
         const response = await axios.get(`http://localhost:3001/api/user-avatar/${userId}`);
         if (response.data && response.data.avatar) {
-          setUserPhoto(response.data.avatar); // Asignamos el avatar en base64 al estado
+          setUserPhoto(response.data.avatar); // Convertimos el blob en base64 para mostrarlo como imagen
         } else {
           console.warn('No se encontró la foto del usuario.');
         }
@@ -72,7 +91,9 @@ const Header = ({ toggleSidebar, onLogout }) => {
       >
         <HStack justifyContent="space-between" alignItems="center">
           <HStack spacing={5} alignItems="center">
-            <Text fontSize="xl" fontWeight="bold" color="black" pr="70px">SAG</Text>
+            <Text fontSize="xl" fontWeight="bold" color="black" pr="70px">
+              SAG
+            </Text>
             <IconButton
               aria-label="Menu"
               icon={<Menu fontSize="small" />}
@@ -191,18 +212,19 @@ const Header = ({ toggleSidebar, onLogout }) => {
           </HStack>
         </HStack>
 
+        {/* Barra de búsqueda colapsable */}
         {!showSearchFull && (
           <Collapse in={searchOpen} animateOpacity>
             <InputGroup mt={5} w="full">
               <InputLeftElement
                 pointerEvents="none"
-                children={<Search style={{ fontSize: 28, color: "#9e9e9e" }} />}
+                children={<Search style={{ fontSize: 28, color: '#9e9e9e' }} />}
               />
               <Input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Buscar Usuario"
                 border="none"
-                _focus={{ outline: "none", boxShadow: 'none' }}
+                _focus={{ outline: 'none', boxShadow: 'none' }}
                 _placeholder={{ color: 'gray.500' }}
                 h="30px"
                 pl="50px"

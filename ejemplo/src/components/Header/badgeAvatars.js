@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { styled } from '@mui/material/styles';
 import Badge from '@mui/material/Badge';
 import Avatar from '@mui/material/Avatar';
@@ -33,38 +33,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
-const BadgeAvatars = ({ userId }) => {
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      try {
-        // Realizamos la solicitud para obtener el avatar
-        const response = await fetch(`http://localhost:3001/api/user-avatar/${userId}`);
-        if (!response.ok) {
-          throw new Error('Error al obtener el avatar');
-        }
-
-        // Obtenemos y procesamos la respuesta
-        const data = await response.json();
-        if (data.photo) {
-          // Convertimos la foto en base64 para usarla como fuente
-          setAvatarUrl(`data:image/jpeg;base64,${data.photo}`);
-        } else {
-          console.warn('No se encontró foto en la respuesta.');
-        }
-      } catch (error) {
-        console.error('Error al obtener la foto del avatar:', error);
-      }
-    };
-
-    if (userId) {
-      fetchAvatar();
-    } else {
-      console.warn('El ID del usuario no está definido.');
-    }
-  }, [userId]);
-
+const BadgeAvatars = ({ avatarUrl }) => {
   return (
     <Stack direction="row" spacing={2}>
       <StyledBadge
@@ -73,8 +42,8 @@ const BadgeAvatars = ({ userId }) => {
         variant="dot"
       >
         <Avatar
-          alt="Avatar"
-          src={avatarUrl || '/static/images/avatar/default.jpg'} // Usamos un avatar por defecto si no se obtiene uno
+          alt="Avatar del usuario"
+          src={avatarUrl || '/static/images/avatar/default.jpg'} // Imagen por defecto si no hay avatar
         />
       </StyledBadge>
     </Stack>

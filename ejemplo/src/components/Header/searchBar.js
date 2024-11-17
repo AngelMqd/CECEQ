@@ -25,7 +25,7 @@ const SearchBar = () => {
       />
       <Input
         type="text"
-        placeholder="Search users..."
+        placeholder="Buscar Usuario"
         border="none" // Sin borde para un diseño limpio
         _focus={{
             outline: "none", // Sin borde de selección

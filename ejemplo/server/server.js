@@ -20,7 +20,7 @@ cron.schedule('59 23 * * *', () => {
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'Master12$',
+  password: 'angel820',
   database: 'ceceq'
 });
 
@@ -163,29 +163,30 @@ app.get('/api/personas/:id', (req, res) => {
 app.get('/api/user-avatar/:id', (req, res) => {
   const userId = req.params.id;
 
-  // Consulta para obtener la foto desde main_persona usando el main_persona_id relacionado
   const query = `
-    SELECT mp.photo 
+    SELECT mp.photo
     FROM auth_user au
-    INNER JOIN main_persona mp ON au.main_persona_id = mp.id
+    JOIN main_persona mp ON au.main_persona_id = mp.id
     WHERE au.id = ?
   `;
 
   db.query(query, [userId], (error, results) => {
     if (error) {
-      console.error('Error al obtener la foto:', error);
-      return res.status(500).json({ error: 'Error al obtener la foto del usuario' });
+      console.error('Error en la consulta:', error);
+      return res.status(500).json({ error: 'Error en el servidor' });
     }
 
-    if (results.length === 0 || !results[0].photo) {
-      return res.status(404).json({ error: 'Foto no encontrada' });
+    if (results.length > 0 && results[0].photo) {
+      const photoBase64 = `data:image/jpeg;base64,${results[0].photo.toString('base64')}`;
+      res.json({ avatar: photoBase64 });
+    } else {
+      res.status(404).json({ message: 'Foto no encontrada' });
     }
-
-    // Devuelve la foto como base64
-    const photo = results[0].photo.toString('base64');
-    res.json({ avatar: `data:image/jpeg;base64,${photo}` });
   });
 });
+
+
+
 
 
 
