@@ -90,7 +90,8 @@ function PeopleTable() {
   };
 
   const renderActionButton = (row) => {
-    if (!row.hora_entrada) {
+    if (!row.hora_entrada || (row.hora_entrada && row.hora_salida)) {
+      // Si no hay hora de entrada o si ambas están completadas, muestra el botón de entrada
       return (
         <Button
           variant="contained"
@@ -101,6 +102,7 @@ function PeopleTable() {
         </Button>
       );
     } else if (row.hora_entrada && !row.hora_salida) {
+      // Si hay entrada pero no salida, muestra el botón de salida
       return (
         <Button
           variant="contained"
@@ -111,6 +113,7 @@ function PeopleTable() {
         </Button>
       );
     } else {
+      // Si ambas están completadas y no se permite nueva entrada, muestra "Completado"
       return (
         <Tooltip title="Registro completado">
           <Button variant="outlined" disabled>
@@ -120,7 +123,6 @@ function PeopleTable() {
       );
     }
   };
-
   const renderRows = () => {
     return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
       <TableRow hover key={index}>
@@ -171,7 +173,7 @@ function PeopleTable() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[25, 50, 100]}
           component="div"
           count={rows.length}
           rowsPerPage={rowsPerPage}

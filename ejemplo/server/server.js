@@ -225,33 +225,26 @@ app.post('/api/crud', upload.fields([
 app.get('/api/assistence', (req, res) => {
   const query = `
     SELECT 
-      mp.id AS main_persona_id, 
-      mp.folio, 
-      mp.photo, 
-      mp.name, 
-      mp.surname, 
-      mp.phone, 
-      mp.status, 
-      a.created_at AS hora_entrada, 
-      a.exit_time AS hora_salida 
-    FROM main_persona mp
-    LEFT JOIN (
-      SELECT 
-        assistence.main_persona_id, 
-        assistence.created_at, 
-        assistence.exit_time
-      FROM assistence
-      INNER JOIN (
-        SELECT 
-          main_persona_id, 
-          MAX(created_at) AS max_created_at
-        FROM assistence
-        WHERE DATE(created_at) = CURDATE()
-        GROUP BY main_persona_id
-      ) recent ON assistence.main_persona_id = recent.main_persona_id 
-               AND assistence.created_at = recent.max_created_at
-    ) a ON mp.id = a.main_persona_id
-    ORDER BY a.created_at DESC;
+  mp.id AS main_persona_id, 
+  mp.folio, 
+  mp.photo, 
+  mp.name, 
+  mp.surname, 
+  mp.phone, 
+  mp.status, 
+  a.created_at AS hora_entrada, 
+  a.exit_time AS hora_salida 
+FROM main_persona mp
+LEFT JOIN (
+  SELECT 
+    main_persona_id, 
+    MAX(created_at) AS created_at, 
+    MAX(exit_time) AS exit_time
+  FROM assistence
+  GROUP BY main_persona_id
+) a ON mp.id = a.main_persona_id
+ORDER BY mp.id;
+
   `;
 
   db.query(query, (error, results) => {
