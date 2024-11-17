@@ -1,5 +1,5 @@
 import React from 'react';
-import HeaderUsuarios from '../Header-Usuarios/Header-usuarios'; // Encabezado para Usuarios
+import HeaderUsuarios from '../Header/Header'; // Encabezado para Usuarios
 import PeopleTable from '../Tables/PeopleTable'; // Asegúrate de que la ruta es correcta
 
 

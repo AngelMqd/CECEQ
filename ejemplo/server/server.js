@@ -211,10 +211,6 @@ app.post('/api/crud', upload.fields([
   });
 });
 
-// Inicialización del servidor
-app.listen(3001, () => {
-  console.log('Servidor corriendo en el puerto 3001');
-});
 
 
 
@@ -226,91 +222,129 @@ app.listen(3001, () => {
 
 
 
-
-
-
-
-
-
-
-
-
-// Ruta para obtener personas con entrada registrada y sin salida
-app.get('/api/assistence/entradasSinSalida', (req, res) => {
+app.get('/api/assistence', (req, res) => {
   const query = `
-    SELECT mp.id, mp.name, mp.surname, mp.phone, mp.status, a.created_at AS fecha_entrada 
+    SELECT 
+      mp.folio, 
+      mp.photo, 
+      mp.name, 
+      mp.surname, 
+      mp.phone, 
+      mp.status, 
+      a.created_at AS hora_entrada, 
+      a.exit_time AS hora_salida
     FROM main_persona mp
-    JOIN assistence a ON mp.id = a.main_persona_id
-    WHERE a.exit_time IS NULL
+    LEFT JOIN (
+      SELECT main_persona_id, MAX(created_at) AS created_at, MAX(exit_time) AS exit_time
+      FROM assistence
+      GROUP BY main_persona_id
+    ) a ON mp.id = a.main_persona_id
+    ORDER BY mp.folio ASC
   `;
-
   db.query(query, (error, results) => {
     if (error) {
-      console.error('Error obteniendo entradas sin salida:', error);
-      return res.status(500).json({ error: 'Error al obtener las entradas sin salida' });
+      console.error('Error obteniendo asistencias:', error);
+      return res.status(500).json({ error: 'Error al obtener asistencias' });
     }
     res.json(results);
   });
 });
 
+
+// Ruta para registrar entrada
 app.post('/api/assistence/entrada/:id', (req, res) => {
   const personId = req.params.id;
   const currentDate = new Date();
 
-  const query = `
-    INSERT INTO assistence (created_at, main_persona_id) 
-    VALUES (?, ?)
+  // Verificar si ya existe una entrada activa
+  const checkQuery = `
+    SELECT * FROM assistence 
+    WHERE main_persona_id = ? AND exit_time IS NULL
   `;
-  db.query(query, [currentDate, personId], (err, results) => {
+
+  db.query(checkQuery, [personId], (err, results) => {
     if (err) {
-      console.error('Error registrando entrada:', err);
-      return res.status(500).json({ error: 'Error registrando entrada' });
+      console.error('Error verificando entrada activa:', err);
+      return res.status(500).json({ error: 'Error verificando entrada activa' });
     }
-    res.status(200).json({ message: 'Entrada registrada correctamente', created_at: currentDate });
+
+    if (results.length > 0) {
+      // Ya existe una entrada activa
+      return res.status(400).json({ error: 'Ya existe una entrada activa para este usuario' });
+    }
+
+    // Registrar nueva entrada
+    const insertQuery = `
+      INSERT INTO assistence (created_at, main_persona_id) 
+      VALUES (?, ?)
+    `;
+    db.query(insertQuery, [currentDate, personId], (err) => {
+      if (err) {
+        console.error('Error registrando entrada:', err);
+        return res.status(500).json({ error: 'Error registrando entrada' });
+      }
+      res.status(200).json({ message: 'Entrada registrada correctamente', created_at: currentDate });
+    });
   });
 });
 
-
-// Ruta para registrar la salida
+// Ruta para registrar salida
 app.put('/api/assistence/salida/:id', (req, res) => {
-  const main_persona_id = req.params.id;
-  const currentDate = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
+  const personId = req.params.id;
+  const currentDate = new Date();
 
-  // Verificar si existe una entrada hoy para esta persona
-  const findEntryQuery = `
-    SELECT id FROM assistence 
-    WHERE main_persona_id = ? AND DATE(created_at) = ? AND exit_time IS NULL
+  // Verificar si existe una entrada activa
+  const checkQuery = `
+    SELECT * FROM assistence 
+    WHERE main_persona_id = ? AND exit_time IS NULL
   `;
 
-  db.query(findEntryQuery, [main_persona_id, currentDate], (error, results) => {
-    if (error) {
-      console.error('Error verificando entrada:', error);
-      return res.status(500).json({ error: 'Error verificando entrada' });
+  db.query(checkQuery, [personId], (err, results) => {
+    if (err) {
+      console.error('Error verificando entrada activa:', err);
+      return res.status(500).json({ error: 'Error verificando entrada activa' });
     }
 
     if (results.length === 0) {
-      return res.status(404).json({ error: 'No hay registros de entrada para hoy o ya se registró una salida' });
+      // No existe una entrada activa
+      return res.status(400).json({ error: 'No existe una entrada activa para este usuario' });
     }
 
     const assistenceId = results[0].id;
-    const exitTime = new Date().toISOString().slice(0, 19).replace('T', ' '); // Formato 'YYYY-MM-DD HH:MM:SS'
 
-    // Actualizar el registro con la hora de salida
-    const updateExitQuery = `
+    // Registrar salida
+    const updateQuery = `
       UPDATE assistence SET exit_time = ? WHERE id = ?
     `;
-
-    db.query(updateExitQuery, [exitTime, assistenceId], (error) => {
-      if (error) {
-        console.error('Error registrando salida:', error);
+    db.query(updateQuery, [currentDate, assistenceId], (err) => {
+      if (err) {
+        console.error('Error registrando salida:', err);
         return res.status(500).json({ error: 'Error registrando salida' });
       }
-      res.status(200).json({ message: 'Salida registrada correctamente', assistenceId });
+      res.status(200).json({ message: 'Salida registrada correctamente', exit_time: currentDate });
     });
   });
 });
 
 
+
+// Ruta para obtener entradas sin salida
+app.get('/api/assistence/entradasSinSalida', (req, res) => {
+  const query = `
+    SELECT mp.id, mp.folio, mp.name, mp.surname, mp.phone, mp.status, a.created_at AS hora_entrada
+    FROM main_persona mp
+    JOIN assistence a ON mp.id = a.main_persona_id
+    WHERE a.exit_time IS NULL
+    ORDER BY a.created_at DESC
+  `;
+  db.query(query, (error, results) => {
+    if (error) {
+      console.error('Error obteniendo entradas sin salida:', error);
+      return res.status(500).json({ error: 'Error al obtener entradas sin salida' });
+    }
+    res.json(results);
+  });
+});
 
 // Reinicio diario de la tabla de asistencias a las 23:59
 cron.schedule('59 23 * * *', () => {
@@ -323,65 +357,8 @@ cron.schedule('59 23 * * *', () => {
     }
   });
 });
-// Ruta para obtener asistencias de un día específico
-app.get('/api/assistence/dia/:date', (req, res) => {
-  const date = req.params.date;
-  const query = `
-    SELECT * FROM assistence 
-    WHERE DATE(created_at) = ?
-  `;
-  db.query(query, [date], (error, results) => {
-    if (error) {
-      console.error('Error obteniendo asistencias por día:', error);
-      return res.status(500).json({ error: 'Error al obtener asistencias por día' });
-    }
-    res.json(results);
-  });
-});
 
-// Ruta para obtener asistencias de un mes específico
-app.get('/api/assistence/mes/:year/:month', (req, res) => {
-  const { year, month } = req.params;
-  const query = `
-    SELECT * FROM assistence 
-    WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
-  `;
-  db.query(query, [year, month], (error, results) => {
-    if (error) {
-      console.error('Error obteniendo asistencias por mes:', error);
-      return res.status(500).json({ error: 'Error al obtener asistencias por mes' });
-    }
-    res.json(results);
-  });
-});
-
-// Ruta para obtener asistencias de un año específico
-app.get('/api/assistence/ano/:year', (req, res) => {
-  const year = req.params.year;
-  const query = `
-    SELECT * FROM assistence 
-    WHERE YEAR(created_at) = ?
-  `;
-  db.query(query, [year], (error, results) => {
-    if (error) {
-      console.error('Error obteniendo asistencias por año:', error);
-      return res.status(500).json({ error: 'Error al obtener asistencias por año' });
-    }
-    res.json(results);
-  });
-});
-
-// Ruta para obtener inasistencias (dependiendo de cómo estén marcadas)
-app.get('/api/inasistencias', (req, res) => {
-  const query = `
-    SELECT * FROM main_persona 
-    WHERE id NOT IN (SELECT main_persona_id FROM assistence)
-  `;
-  db.query(query, (error, results) => {
-    if (error) {
-      console.error('Error obteniendo inasistencias:', error);
-      return res.status(500).json({ error: 'Error al obtener inasistencias' });
-    }
-    res.json(results);
-  });
+// Inicialización del servidor
+app.listen(3001, () => {
+  console.log('Servidor corriendo en el puerto 3001');
 });
