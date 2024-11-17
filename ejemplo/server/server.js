@@ -225,6 +225,7 @@ app.post('/api/crud', upload.fields([
 app.get('/api/assistence', (req, res) => {
   const query = `
     SELECT 
+      mp.id AS main_persona_id, 
       mp.folio, 
       mp.photo, 
       mp.name, 
@@ -232,15 +233,27 @@ app.get('/api/assistence', (req, res) => {
       mp.phone, 
       mp.status, 
       a.created_at AS hora_entrada, 
-      a.exit_time AS hora_salida
+      a.exit_time AS hora_salida 
     FROM main_persona mp
     LEFT JOIN (
-      SELECT main_persona_id, MAX(created_at) AS created_at, MAX(exit_time) AS exit_time
+      SELECT 
+        assistence.main_persona_id, 
+        assistence.created_at, 
+        assistence.exit_time
       FROM assistence
-      GROUP BY main_persona_id
+      INNER JOIN (
+        SELECT 
+          main_persona_id, 
+          MAX(created_at) AS max_created_at
+        FROM assistence
+        WHERE DATE(created_at) = CURDATE()
+        GROUP BY main_persona_id
+      ) recent ON assistence.main_persona_id = recent.main_persona_id 
+               AND assistence.created_at = recent.max_created_at
     ) a ON mp.id = a.main_persona_id
-    ORDER BY mp.folio ASC
+    ORDER BY a.created_at DESC;
   `;
+
   db.query(query, (error, results) => {
     if (error) {
       console.error('Error obteniendo asistencias:', error);
@@ -251,77 +264,83 @@ app.get('/api/assistence', (req, res) => {
 });
 
 
+
 // Ruta para registrar entrada
 app.post('/api/assistence/entrada/:id', (req, res) => {
-  const personId = req.params.id;
+  const main_persona_id = req.params.id;
   const currentDate = new Date();
 
-  // Verificar si ya existe una entrada activa
-  const checkQuery = `
+  // Verifica si ya existe un registro de entrada sin salida
+  const findQuery = `
     SELECT * FROM assistence 
     WHERE main_persona_id = ? AND exit_time IS NULL
   `;
 
-  db.query(checkQuery, [personId], (err, results) => {
+  db.query(findQuery, [main_persona_id], (err, results) => {
     if (err) {
-      console.error('Error verificando entrada activa:', err);
-      return res.status(500).json({ error: 'Error verificando entrada activa' });
+      console.error('Error al verificar entrada:', err);
+      return res.status(500).json({ error: 'Error al verificar entrada' });
     }
 
     if (results.length > 0) {
-      // Ya existe una entrada activa
-      return res.status(400).json({ error: 'Ya existe una entrada activa para este usuario' });
+      return res.status(400).json({ message: 'El usuario ya tiene una entrada registrada sin salida.' });
     }
 
-    // Registrar nueva entrada
+    // Inserta un nuevo registro de entrada
     const insertQuery = `
-      INSERT INTO assistence (created_at, main_persona_id) 
-      VALUES (?, ?)
+      INSERT INTO assistence (created_at, exit_time, section_event, main_persona_id) 
+      VALUES (?, NULL, NULL, ?)
     `;
-    db.query(insertQuery, [currentDate, personId], (err) => {
+
+    db.query(insertQuery, [currentDate, main_persona_id], (err) => {
       if (err) {
-        console.error('Error registrando entrada:', err);
-        return res.status(500).json({ error: 'Error registrando entrada' });
+        console.error('Error al registrar entrada:', err);
+        return res.status(500).json({ error: 'Error al registrar entrada' });
       }
-      res.status(200).json({ message: 'Entrada registrada correctamente', created_at: currentDate });
+
+      res.status(200).json({ message: 'Entrada registrada correctamente.' });
     });
   });
 });
 
-// Ruta para registrar salida
 app.put('/api/assistence/salida/:id', (req, res) => {
-  const personId = req.params.id;
+  const main_persona_id = req.params.id;
   const currentDate = new Date();
 
-  // Verificar si existe una entrada activa
-  const checkQuery = `
+  // Busca la última entrada sin salida registrada para este usuario
+  const findQuery = `
     SELECT * FROM assistence 
     WHERE main_persona_id = ? AND exit_time IS NULL
+    ORDER BY created_at DESC
+    LIMIT 1
   `;
 
-  db.query(checkQuery, [personId], (err, results) => {
+  db.query(findQuery, [main_persona_id], (err, results) => {
     if (err) {
-      console.error('Error verificando entrada activa:', err);
-      return res.status(500).json({ error: 'Error verificando entrada activa' });
+      console.error('Error al verificar salida:', err);
+      return res.status(500).json({ error: 'Error al verificar salida' });
     }
 
     if (results.length === 0) {
-      // No existe una entrada activa
-      return res.status(400).json({ error: 'No existe una entrada activa para este usuario' });
+      return res.status(400).json({ message: 'No hay entradas registradas sin salida para este usuario.' });
     }
 
     const assistenceId = results[0].id;
 
-    // Registrar salida
+    // Actualiza el registro con la hora de salida
     const updateQuery = `
-      UPDATE assistence SET exit_time = ? WHERE id = ?
+      UPDATE assistence 
+      SET exit_time = ? 
+      WHERE id = ?
     `;
+
     db.query(updateQuery, [currentDate, assistenceId], (err) => {
       if (err) {
-        console.error('Error registrando salida:', err);
-        return res.status(500).json({ error: 'Error registrando salida' });
+        console.error('Error al registrar salida:', err);
+        return res.status(500).json({ error: 'Error al registrar salida' });
       }
-      res.status(200).json({ message: 'Salida registrada correctamente', exit_time: currentDate });
+
+      res.status(200).json({ message: 'Salida registrada correctamente.' });
     });
   });
 });

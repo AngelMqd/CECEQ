@@ -13,7 +13,6 @@ import {
   TableHead,
   Tooltip,
 } from '@mui/material';
-import { Warning as WarningIcon } from '@mui/icons-material';
 import axios from 'axios';
 import { format } from 'date-fns';
 
@@ -41,72 +40,77 @@ function PeopleTable() {
   const fetchData = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/assistence');
-      // Asegurar que los datos estén formateados correctamente
       const formattedData = response.data.map((row) => ({
         ...row,
-        hora_entrada: row.hora_entrada ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss') : null,
-        hora_salida: row.hora_salida ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss') : null,
+        hora_entrada: row.hora_entrada
+          ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss')
+          : null,
+        hora_salida: row.hora_salida
+          ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss')
+          : null,
       }));
       setRows(formattedData);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error al cargar datos:', error);
     }
   };
 
-  const handleEntrada = async (folio) => {
+  const handleEntrada = async (main_persona_id) => {
+    if (!main_persona_id) {
+      alert('ID de usuario inválido.');
+      return;
+    }
+
     try {
-      const response = await axios.post(`http://localhost:3001/api/assistence/entrada/${folio}`);
+      const response = await axios.post(
+        `http://localhost:3001/api/assistence/entrada/${main_persona_id}`
+      );
       alert(response.data.message);
-      fetchData(); // Refrescar datos
+      fetchData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Error registrando entrada');
+      alert(error.response?.data?.error || 'Error al registrar entrada.');
     }
   };
 
-  const handleSalida = async (folio) => {
+  const handleSalida = async (main_persona_id) => {
+    if (!main_persona_id) {
+      alert('ID de usuario inválido.');
+      return;
+    }
+
     try {
-      const response = await axios.put(`http://localhost:3001/api/assistence/salida/${folio}`);
+      const response = await axios.put(
+        `http://localhost:3001/api/assistence/salida/${main_persona_id}`
+      );
       alert(response.data.message);
-      fetchData(); // Refrescar datos
+      fetchData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Error registrando salida');
+      alert(error.response?.data?.error || 'Error al registrar salida.');
     }
-  };
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
   };
 
   const renderActionButton = (row) => {
     if (!row.hora_entrada) {
-      // Mostrar botón de entrada si no tiene hora de entrada
       return (
         <Button
           variant="contained"
           color="primary"
-          onClick={() => handleEntrada(row.folio)}
+          onClick={() => handleEntrada(row.main_persona_id)}
         >
           Registrar Entrada
         </Button>
       );
     } else if (row.hora_entrada && !row.hora_salida) {
-      // Mostrar botón de salida si tiene entrada pero no salida
       return (
         <Button
           variant="contained"
           color="secondary"
-          onClick={() => handleSalida(row.folio)}
+          onClick={() => handleSalida(row.main_persona_id)}
         >
           Registrar Salida
         </Button>
       );
     } else {
-      // Mostrar botón completado si ya tiene entrada y salida
       return (
         <Tooltip title="Registro completado">
           <Button variant="outlined" disabled>
@@ -137,6 +141,15 @@ function PeopleTable() {
         <TableCell align="center">{renderActionButton(row)}</TableCell>
       </TableRow>
     ));
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   return (
