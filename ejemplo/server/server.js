@@ -89,13 +89,21 @@ const upload = multer({
   }
 });
 
-// Ruta para crear una nueva persona con foto y documentos en la base de datos
-app.post('/api/crud', upload.fields([
-  { name: 'photo' },
-  { name: 'address_proof' },
-  { name: 'id_card' }
-]), (req, res) => {
-  const currentDate = new Date();
+app.post('/api/crud', upload.fields([{ name: 'photo' }, { name: 'address_proof' }, { name: 'id_card' }]), (req, res) => {
+  const {
+    folio,
+    name,
+    surname,
+    birth_date,
+    gender,
+    civil_status,
+    address,
+    estate,
+    foreign: isForeign,
+    phone,
+    occupation,
+    last_studies,
+  } = req.body;
 
   const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
   const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
@@ -103,28 +111,39 @@ app.post('/api/crud', upload.fields([
 
   const query = `
     INSERT INTO main_persona (
-      folio, name, surname, birth_date, gender, civil_status, 
-      address, estate, \`foreign\`, phone, occupation, last_studies,
-      photo, address_proof, id_card, created_at, updated_at, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      folio, name, surname, birth_date, gender, civil_status, address, estate,
+      \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const values = [
-    req.body.folio, req.body.name, req.body.surname, req.body.birth_date, req.body.gender,
-    req.body.civil_status, req.body.address, req.body.estate, req.body.foreign,
-    req.body.phone, req.body.occupation, req.body.last_studies, photo,
-    addressProof, idCard, currentDate, currentDate, 0
-  ];
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error('Error al insertar los datos:', err);
-      return res.status(500).json({ error: 'Error al insertar los datos en la base de datos' });
+  db.query(
+    query,
+    [
+      folio,
+      name,
+      surname,
+      birth_date,
+      gender,
+      civil_status,
+      address,
+      estate,
+      isForeign,
+      phone,
+      occupation,
+      last_studies,
+      photo,
+      addressProof,
+      idCard,
+    ],
+    (err) => {
+      if (err) {
+        console.error('Error al guardar en la base de datos:', err);
+        return res.status(500).json({ error: 'Error al guardar en la base de datos' });
+      }
+      res.json({ message: 'Persona registrada con éxito' });
     }
-    res.status(200).json({ message: 'Persona registrada exitosamente', id: result.insertId });
-  });
+  );
 });
-
 // Ruta para obtener todas las personas y sus fotos/documentos
 app.get('/api/personas', (req, res) => {
   const query = `
