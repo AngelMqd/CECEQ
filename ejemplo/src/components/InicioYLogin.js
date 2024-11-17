@@ -32,7 +32,9 @@ function InicioYLogin({ onLogin }) {
       });
       setMessage(response.data.message);
       setMessageType('success');
-      localStorage.setItem('usuario', response.data.user.username);
+      localStorage.setItem('usuario', JSON.stringify(response.data.user));
+
+
       onLogin(response.data.user.username);
     } catch (error) {
       setMessage(

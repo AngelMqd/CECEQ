@@ -31,7 +31,7 @@ const headCells = [
 function PeopleTable() {
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   useEffect(() => {
     fetchData();
@@ -150,7 +150,7 @@ function PeopleTable() {
   };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    setRowsPerPage(parseInt(event.target.value, 25));
     setPage(0);
   };
 

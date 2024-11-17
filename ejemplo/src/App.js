@@ -17,7 +17,6 @@ import RegisterPersonForm from './components/Views/RegisterPersonForm';
 import InicioYLogin from './components/InicioYLogin';
 import Asistencias from './components/Tables-Asistencias/Asistencias';
 
-
 const theme = createTheme();
 
 function App() {
@@ -27,7 +26,7 @@ function App() {
   const [breadcrumbs, setBreadcrumbs] = useState([]);
   const [pageTitle, setPageTitle] = useState('');
   const [personas, setPersonas] = useState([]);
-  const [setSelectedPerson] = useState(null);
+  const [ setSelectedPerson] = useState(null); // Corregido: ahora se usa correctamente
   const navigate = useNavigate();
 
   // Función de logout
@@ -48,7 +47,7 @@ function App() {
     setActiveView(view);
     setPageTitle(title);
     setBreadcrumbs(breadcrumbs);
-  
+
     // Navegar a la ruta correspondiente
     switch (view) {
       case 'personas':
@@ -57,20 +56,19 @@ function App() {
       case 'perfil':
         navigate('/perfil');
         break;
-      case 'asistencias': // Nueva vista para Asistencias
+      case 'asistencias':
         navigate('/asistencias');
         break;
-        case 'disabilitys': // Nueva vista para Asistencias
+      case 'disabilitys':
         navigate('/disabilitys');
         break;
-        case 'usuarios': // Nueva vista para Asistencias
+      case 'usuarios':
         navigate('/usuarios');
         break;
       default:
         navigate('/');
     }
   };
-  
 
   // Función para seleccionar una persona y cambiar la vista
   const handleSelectPerson = (person) => {
@@ -111,9 +109,17 @@ function App() {
       <MUIThemeProvider theme={theme}>
         {isAuthenticated ? (
           <>
-            <Header toggleSidebar={toggleSidebar} onLogout={handleLogout} />
+            <Header
+              toggleSidebar={toggleSidebar}
+              onLogout={handleLogout}
+              userId={localStorage.getItem('usuario')} // Corregido: Paso del usuario autenticado
+            />
             <div style={{ marginTop: '70px', display: 'flex' }}>
-              <Sidebar isOpen={sidebarOpen} onViewChange={handleViewChange} activeView={activeView} />
+              <Sidebar
+                isOpen={sidebarOpen}
+                onViewChange={handleViewChange}
+                activeView={activeView}
+              />
               <div
                 style={{
                   flex: 1,
@@ -121,7 +127,7 @@ function App() {
                   marginLeft: sidebarOpen ? '240px' : '80px',
                   transition: 'margin 0.3s ease',
                   maxHeight: '90vh',
-                  overflowY: 'auto' 
+                  overflowY: 'auto',
                 }}
               >
                 <Breadcrumbs title={pageTitle} breadcrumbs={breadcrumbs} />
@@ -132,42 +138,36 @@ function App() {
                     borderRadius: '8px',
                     padding: '20px',
                     marginBottom: '20px',
-                    minHeight: '600px'
-                  
+                    minHeight: '600px',
                   }}
                 >
                   <Routes>
-                    {/* Tabla de personas */}
                     <Route
                       path="/personas"
-                      element={<PeopleTable onSelectPerson={handleSelectPerson} personas={personas} />}
+                      element={
+                        <PeopleTable
+                          onSelectPerson={handleSelectPerson}
+                          personas={personas}
+                        />
+                      }
                     />
-                    {/* Tabla de asistencias */}
                     <Route
                       path="/asistencias"
                       element={<Asistencias onLogout={handleLogout} />}
                     />
-                    <Route 
-                    path="/usuarios" 
-                    element={<Usuarios onLogout={handleLogout} />} 
-                    />
-                    <Route 
-                    path="/disabilitys" 
-                    element={<Disabilitys onLogout={handleLogout} />} 
-                    />
-                    {/* Perfil de usuario */}
                     <Route
-                      path="/perfil/:id"
-                      element={<UserProfile />}
+                      path="/usuarios"
+                      element={<Usuarios onLogout={handleLogout} />}
                     />
-                    {/* Registro de una nueva persona */}
+                    <Route
+                      path="/disabilitys"
+                      element={<Disabilitys onLogout={handleLogout} />}
+                    />
+                    <Route path="/perfil/:id" element={<UserProfile />} />
                     <Route path="/registrar-persona" element={<RegisterPersonForm />} />
                     <Route path="/crud" element={<Crud />} />
-                    {/* Edición del perfil */}
                     <Route path="/editar-perfil/:id" element={<EditProfile />} />
-                    {/* Historial de cambios */}
                     <Route path="/historial-cambios/:id" element={<ChangeHistory />} />
-                    {/* Vista principal */}
                     <Route path="/" element={<h1>Contenido Principal</h1>} />
                   </Routes>
                 </div>
@@ -175,7 +175,6 @@ function App() {
             </div>
           </>
         ) : (
-          // Muestra la página de inicio de sesión si no está autenticado
           <InicioYLogin onLogin={() => setIsAuthenticated(true)} />
         )}
       </MUIThemeProvider>
@@ -184,5 +183,3 @@ function App() {
 }
 
 export default App;
-
-

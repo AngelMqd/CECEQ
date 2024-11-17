@@ -15,14 +15,6 @@ cron.schedule('59 23 * * *', () => {
   console.log('Cron job ejecutado a las 23:59');
  
 });
-// Base path para almacenar archivos
-const mediaBasePath = path.join('C:/Users/100097567/Documents/CECEQ/media');
-app.use('/media/photos', express.static(path.join('C:/Users/100097567/Documents/CECEQ/media/photos')));
-
-// Servir archivos estáticos
-app.use('/uploads/photos', express.static(path.join(mediaBasePath, 'photos')));
-app.use('/uploads/address', express.static(path.join(mediaBasePath, 'address')));
-app.use('/uploads/card', express.static(path.join(mediaBasePath, 'card')));
 
 // Configuración de la conexión a la base de datos
 const db = mysql.createConnection({
@@ -39,6 +31,7 @@ db.connect((err) => {
   }
   console.log('Conectado a la base de datos');
 });
+
 
 // Ruta de autenticación (login)
 app.post('/api/login', (req, res) => {
@@ -80,112 +73,37 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-app.get('/api/user-avatar/:id', (req, res) => {
-  const userId = req.params.id;
-  const query = `
-    SELECT mp.photo FROM auth_user au
-    JOIN main_persona mp ON au.main_persona_id = mp.id
-    WHERE au.id = ?
-  `;
 
-  db.query(query, [userId], (error, results) => {
-    if (error) {
-      console.error('Error al obtener el avatar:', error);
-      return res.status(500).json({ error: 'Error al obtener el avatar' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    res.json({ avatarUrl: results[0].photo });
-  });
-});
-// Ruta para obtener todas las personas
-app.get('/api/personas', (req, res) => {
-  const query = `
-    SELECT * FROM main_persona 
-    WHERE status = 0 
-    ORDER BY created_at DESC
-  `;
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error al obtener los datos:', err);
-      return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
-    }
-    res.json(results);
-  });
-});
-
-// Ruta para obtener una persona por ID
-app.get('/api/personas/:id', (req, res) => {
-  const personId = req.params.id;
-  const query = `
-    SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
-           address, estate, \`foreign\`, phone, occupation, last_studies, 
-           created_at, updated_at, status
-    FROM main_persona
-    WHERE id = ?
-  `;
-
-  db.query(query, [personId], (error, results) => {
-    if (error) {
-      console.error('Error al obtener los datos de la base de datos:', error);
-      return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Persona no encontrada' });
-    }
-    res.json(results[0]);
-  });
-});
-
-// Configuración de almacenamiento de archivos con Multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const filePathMap = {
-      'photo': path.join(mediaBasePath, 'photos'),
-      'address_proof': path.join(mediaBasePath, 'address'),
-      'id_card': path.join(mediaBasePath, 'card'),
-    };
-    const filePath = filePathMap[file.fieldname];
-    fs.mkdir(filePath, { recursive: true }, (err) => {
-      if (err && err.code !== 'EEXIST') {
-        console.error('Error al crear el directorio:', err);
-        return cb(err);
-      }
-      cb(null, filePath);
-    });
-  },
-  filename: (req, file, cb) => {
-    const { name, surname } = req.body;
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `${name}_${surname}_${Date.now()}${fileExtension}`);
-  },
-});
-
+// Configuración de Multer para recibir archivos sin guardarlos en el sistema de archivos
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: { fileSize: 10485760 }, // 10 MB
   fileFilter: (req, file, cb) => {
-    if (file.fieldname === 'photo' && !file.mimetype.startsWith('image/')) {
-      return cb(new Error('Tipo de archivo no válido para foto'));
-    }
-    if (['address_proof', 'id_card'].includes(file.fieldname) && file.mimetype !== 'application/pdf') {
-      return cb(new Error('Solo se aceptan PDFs para el comprobante de domicilio y la identificación'));
+    const validMimeTypes = {
+      photo: ['image/jpeg', 'image/png', 'image/jpg'],
+      address_proof: ['application/pdf'],
+      id_card: ['application/pdf']
+    };
+
+    if (validMimeTypes[file.fieldname] && !validMimeTypes[file.fieldname].includes(file.mimetype)) {
+      return cb(new Error(`Tipo de archivo no válido para ${file.fieldname}`));
     }
     cb(null, true);
   }
 });
 
-// Ruta para crear una nueva persona
+// Ruta para crear una nueva persona con foto y documentos en la base de datos
 app.post('/api/crud', upload.fields([
   { name: 'photo' },
   { name: 'address_proof' },
   { name: 'id_card' }
 ]), (req, res) => {
   const currentDate = new Date();
-  const photoUrl = req.files['photo'] ? `/uploads/photos/${req.files['photo'][0].filename}` : null;
-  const addressProofUrl = req.files['address_proof'] ? `/uploads/address/${req.files['address_proof'][0].filename}` : null;
-  const idCardUrl = req.files['id_card'] ? `/uploads/card/${req.files['id_card'][0].filename}` : null;
+
+  const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
+  const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
+  const idCard = req.files['id_card'] ? req.files['id_card'][0].buffer : null;
 
   const query = `
     INSERT INTO main_persona (
@@ -198,8 +116,8 @@ app.post('/api/crud', upload.fields([
   const values = [
     req.body.folio, req.body.name, req.body.surname, req.body.birth_date, req.body.gender,
     req.body.civil_status, req.body.address, req.body.estate, req.body.foreign,
-    req.body.phone, req.body.occupation, req.body.last_studies, photoUrl,
-    addressProofUrl, idCardUrl, currentDate, currentDate, 0
+    req.body.phone, req.body.occupation, req.body.last_studies, photo,
+    addressProof, idCard, currentDate, currentDate, 0
   ];
 
   db.query(query, values, (err, result) => {
@@ -210,6 +128,65 @@ app.post('/api/crud', upload.fields([
     res.status(200).json({ message: 'Persona registrada exitosamente', id: result.insertId });
   });
 });
+
+// Ruta para obtener una persona y su foto/documentos
+app.get('/api/personas/:id', (req, res) => {
+  const personId = req.params.id;
+  const query = `
+    SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
+           address, estate, \`foreign\`, phone, occupation, last_studies, 
+           address_proof, id_card, created_at, updated_at, status
+    FROM main_persona
+    WHERE id = ?
+  `;
+
+  db.query(query, [personId], (err, results) => {
+    if (err) {
+      console.error('Error al obtener los datos de la base de datos:', err);
+      return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Persona no encontrada' });
+    }
+
+    const person = results[0];
+
+    // Convierte datos binarios a Base64 para enviarlos en la respuesta
+    person.photo = person.photo ? person.photo.toString('base64') : null;
+    person.address_proof = person.address_proof ? person.address_proof.toString('base64') : null;
+    person.id_card = person.id_card ? person.id_card.toString('base64') : null;
+
+    res.json(person);
+  });
+});
+
+app.get('/api/user-avatar/:id', (req, res) => {
+  const userId = req.params.id;
+
+  // Consulta para obtener la foto desde main_persona usando el main_persona_id relacionado
+  const query = `
+    SELECT mp.photo 
+    FROM auth_user au
+    INNER JOIN main_persona mp ON au.main_persona_id = mp.id
+    WHERE au.id = ?
+  `;
+
+  db.query(query, [userId], (error, results) => {
+    if (error) {
+      console.error('Error al obtener la foto:', error);
+      return res.status(500).json({ error: 'Error al obtener la foto del usuario' });
+    }
+
+    if (results.length === 0 || !results[0].photo) {
+      return res.status(404).json({ error: 'Foto no encontrada' });
+    }
+
+    // Devuelve la foto como base64
+    const photo = results[0].photo.toString('base64');
+    res.json({ avatar: `data:image/jpeg;base64,${photo}` });
+  });
+});
+
 
 
 
@@ -225,26 +202,25 @@ app.post('/api/crud', upload.fields([
 app.get('/api/assistence', (req, res) => {
   const query = `
     SELECT 
-  mp.id AS main_persona_id, 
-  mp.folio, 
-  mp.photo, 
-  mp.name, 
-  mp.surname, 
-  mp.phone, 
-  mp.status, 
-  a.created_at AS hora_entrada, 
-  a.exit_time AS hora_salida 
-FROM main_persona mp
-LEFT JOIN (
-  SELECT 
-    main_persona_id, 
-    MAX(created_at) AS created_at, 
-    MAX(exit_time) AS exit_time
-  FROM assistence
-  GROUP BY main_persona_id
-) a ON mp.id = a.main_persona_id
-ORDER BY mp.id;
-
+      mp.id AS main_persona_id, 
+      mp.folio, 
+      mp.photo, 
+      mp.name, 
+      mp.surname, 
+      mp.phone, 
+      mp.status, 
+      a.created_at AS hora_entrada, 
+      a.exit_time AS hora_salida
+    FROM main_persona mp
+    LEFT JOIN (
+      SELECT 
+        main_persona_id, 
+        MAX(id) AS last_assistence_id
+      FROM assistence
+      GROUP BY main_persona_id
+    ) la ON mp.id = la.main_persona_id
+    LEFT JOIN assistence a ON la.last_assistence_id = a.id
+    ORDER BY mp.id;
   `;
 
   db.query(query, (error, results) => {
@@ -255,7 +231,6 @@ ORDER BY mp.id;
     res.json(results);
   });
 });
-
 
 
 // Ruta para registrar entrada
@@ -358,17 +333,7 @@ app.get('/api/assistence/entradasSinSalida', (req, res) => {
   });
 });
 
-// Reinicio diario de la tabla de asistencias a las 23:59
-cron.schedule('59 23 * * *', () => {
-  const truncateTableQuery = `TRUNCATE TABLE assistence`;
-  db.query(truncateTableQuery, (err) => {
-    if (err) {
-      console.error('Error al reiniciar la tabla de asistencias:', err);
-    } else {
-      console.log('Tabla de asistencias reiniciada correctamente');
-    }
-  });
-});
+
 
 // Inicialización del servidor
 app.listen(3001, () => {

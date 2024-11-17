@@ -1,15 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BadgeAvatars from './badgeAvatars';
 import SearchBar from './searchBar';
 import { IconButton, Box, Text, HStack, Input, InputGroup, InputLeftElement, useColorModeValue, useBreakpointValue, Collapse } from '@chakra-ui/react';
 import { ExitToApp, Tune, Search, Settings, Notifications, Menu, Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Header = ({ toggleSidebar, onLogout }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
+  const [userPhoto, setUserPhoto] = useState(null); // Foto del usuario
   const showSearchFull = useBreakpointValue({ base: false, lg: true });
   const navigate = useNavigate();
+
+  // Obtener datos del usuario autenticado
+  useEffect(() => {
+    const fetchUserPhoto = async () => {
+      try {
+        const storedUser = localStorage.getItem('usuario'); // Obtenemos el usuario de localStorage
+        if (!storedUser) {
+          console.error('No hay usuario autenticado.');
+          return;
+        }
+
+        const parsedUser = JSON.parse(storedUser); // Parseamos el JSON
+        const userId = parsedUser?.id; // Obtenemos el ID del usuario
+        if (!userId) {
+          console.error('El ID del usuario no está disponible.');
+          return;
+        }
+
+        // Obtenemos la información del usuario y su foto
+        const response = await axios.get(`http://localhost:3001/api/user-avatar/${userId}`);
+        if (response.data && response.data.avatar) {
+          setUserPhoto(response.data.avatar); // Asignamos el avatar en base64 al estado
+        } else {
+          console.warn('No se encontró la foto del usuario.');
+        }
+      } catch (error) {
+        console.error('Error al obtener la foto del usuario:', error);
+      }
+    };
+
+    fetchUserPhoto();
+  }, []);
 
   const handleAddPerson = () => {
     navigate('/registrar-persona');
@@ -121,7 +155,13 @@ const Header = ({ toggleSidebar, onLogout }) => {
             <Box position="relative">
               <IconButton
                 aria-label="User menu"
-                icon={<BadgeAvatars />}
+                icon={
+                  userPhoto ? (
+                    <BadgeAvatars avatarUrl={userPhoto} />
+                  ) : (
+                    <Text color="gray.500">Sin foto</Text>
+                  )
+                }
                 onClick={toggleLogoutMenu}
                 variant="ghost"
               />
@@ -141,7 +181,9 @@ const Header = ({ toggleSidebar, onLogout }) => {
                 >
                   <HStack spacing={1} alignItems="center" whiteSpace="nowrap">
                     <ExitToApp style={{ color: '#6E40C9', fontSize: '18px' }} />
-                    <Text color="#6E40C9" fontSize="sm">Cerrar sesión</Text>
+                    <Text color="#6E40C9" fontSize="sm">
+                      Cerrar sesión
+                    </Text>
                   </HStack>
                 </Box>
               )}
