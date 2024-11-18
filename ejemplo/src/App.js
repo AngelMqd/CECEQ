@@ -202,12 +202,8 @@ function App() {
                       element={<CRUDForm addGroup={addGroup} />}
                     />
                     <Route
-                    path="/panelcontrol"
-                    element={<ControlPanel addGroup={addGroup} />}
-                    />
-                    <Route
                     path="/grupos"
-                    element={<Groups groups={groups} />}
+                    element={<Groups groups={Groups} />}
                     />
                     <Route
                     path="/groups-table"
@@ -215,7 +211,6 @@ function App() {
                     />
                     <Route path="/" element={<h1>Contenido Principal</h1>} />
                     <Route path="/panelcontrol" element={<ControlPanel />} />
-                    <Route path="/grupos" element={<Groups />} />
                     <Route path="/perfil/:id" element={<UserProfile />} />
                     <Route path="/registrar-persona" element={<RegisterPersonForm />} />
                     <Route path="/crud" element={<Crud />} />
