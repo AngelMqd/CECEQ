@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Snackbar, Alert, Checkbox, FormControlLabel } from '@mui/material';
+import React, { useState, useEffect  } from 'react';
+import { Box, Button, TextField, Typography, Snackbar, Alert, Checkbox, FormControlLabel,   FormControl, InputLabel,Select, MenuItem} from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import InsertPhoto from '@mui/icons-material/InsertPhoto';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
@@ -7,6 +7,10 @@ import RecentActorsIcon from '@mui/icons-material/RecentActors';
 import axios from 'axios';
 
 function RegisterPersonForm() {
+
+  const [areas, setAreas] = useState([]);
+  const [selectedAbbreviation, setSelectedAbbreviation] = useState('');
+  const [lastFolioNumber, setLastFolioNumber] = useState(0);
   const [formData, setFormData] = useState({
     folio: '',
     name: '',
@@ -20,6 +24,7 @@ function RegisterPersonForm() {
     phone: '',
     occupation: '',
     last_studies: '',
+    area_id: '',
   });
 
   const [photo, setPhoto] = useState(null);
@@ -135,7 +140,7 @@ function RegisterPersonForm() {
     formDataToSend.append('phone', formData.phone);
     formDataToSend.append('occupation', formData.occupation);
     formDataToSend.append('last_studies', formData.last_studies);
-
+    formDataToSend.append('area_id', formData.area_id);
     if (photo) {
       const photoName = `${formData.name}_${formData.surname}.jpg`;
       formDataToSend.append('photo', photo, photoName);
@@ -155,7 +160,7 @@ function RegisterPersonForm() {
       await axios.post('http://localhost:3001/api/crud', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
+    
       setNotification({
         open: true,
         message: '¡Perfil guardado con éxito!',
@@ -163,13 +168,76 @@ function RegisterPersonForm() {
       });
     } catch (error) {
       console.error('Error al registrar persona:', error);
-      setNotification({
-        open: true,
-        message: 'Error al guardar el perfil, revisa la información e inténtalo nuevamente.',
-        type: 'error',
-      });
+    
+      // Verificar si el error es por un folio duplicado
+      if (error.response && error.response.data && error.response.data.error === 'The folio already exists.') {
+        setNotification({
+          open: true,
+          message: 'Error: El folio ya existe. Por favor, genera un folio único.',
+          type: 'error',
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: 'Error al guardar el perfil, revisa la información e inténtalo nuevamente.',
+          type: 'error',
+        });
+      }
     }
   };
+
+  useEffect(() => {
+    axios
+      .get('http://localhost:3001/api/areas')
+      .then((response) => {
+        if (response.data.length > 0) {
+          setAreas(response.data);
+        } else {
+          console.error('No se encontraron áreas');
+        }
+      })
+      .catch((error) => {
+        console.error('Error al obtener las áreas:', error.response || error.message);
+        setNotification({
+          open: true,
+          message: 'Error al cargar las áreas',
+          type: 'error',
+        });
+      });
+  }, []);
+  
+
+  useEffect(() => {
+    if (selectedAbbreviation) {
+      const newFolio = `${selectedAbbreviation}${String(lastFolioNumber + 1).padStart(4, '0')}`;
+      setFormData(prev => ({ ...prev, folio: newFolio }));
+    }
+  }, [selectedAbbreviation, lastFolioNumber]);
+
+  const handleAreaChange = (event) => {
+    const selectedArea = areas.find(area => area.id === event.target.value);
+    if (selectedArea) {
+      setFormData(prev => ({ ...prev, area_id: selectedArea.id }));
+      setSelectedAbbreviation(selectedArea.abbreviation);
+
+      // Obtener el último folio para esta área
+      axios
+      .get(`http://localhost:3001/api/last-folio/${selectedArea.abbreviation}`)
+      .then((response) => {
+        setLastFolioNumber(response.data.lastFolioNumber || 0);
+      })
+      .catch((error) => {
+        console.error('Error al obtener el último folio:', error.response || error.message);
+        setNotification({
+          open: true,
+          message: `Error al obtener el número de folio: ${error.response?.data?.error || error.message}`,
+          type: 'error'
+        });
+      });
+    
+    }
+  };
+
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
@@ -179,12 +247,57 @@ function RegisterPersonForm() {
     <form onSubmit={handleSubmit}>
       <Box sx={{ maxWidth: '800px', margin: '0 auto', p: 4, backgroundColor: '#ffffff', borderRadius: '8px' }}>
         <Typography variant="h5" mb={3}>Registrar Persona</Typography>
+        
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id="area-select-label">Área</InputLabel>
+          <Select
+    labelId="area-select-label"
+    value={formData.area_id}
+    onChange={handleAreaChange}
+    required
+    sx={{
+      mb: 2,
+      backgroundColor: '#ffffff', // Fondo blanco
+      borderRadius: '8px', // Bordes redondeados
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+      '&:hover': {
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', // Sombra al pasar el mouse
+      },
+      '& .MuiSelect-select': {
+        padding: '15px', // Espaciado interno
+        fontSize: '16px', // Tamaño de fuente
+        fontWeight: '500', // Peso de fuente
+      },
+    }}
+  >
+    {areas.map((area) => (
+      <MenuItem key={area.id} value={area.id}>
+        {area.area_name}
+      </MenuItem>
+    ))}
+  </Select>
+        </FormControl>
 
-        <TextField label="Folio" name="folio" value={formData.folio} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+        {selectedAbbreviation && (
+          <Typography variant="body1" color="primary" sx={{ mt: 2 }}>
+            Abreviación seleccionada: <strong>{selectedAbbreviation}</strong>
+          </Typography>
+        )}
+
+        {formData.folio && (
+          <TextField
+            label="Folio"
+            name="folio"
+            value={formData.folio}
+            fullWidth
+            InputProps={{ readOnly: true }}
+            sx={{ mt: 2, mb: 2 }}
+          />
+        )}
 
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-          <TextField label="Nombre" name="name" value={formData.name} onChange={handleChange} fullWidth required />
-          <TextField label="Apellido" name="surname" value={formData.surname} onChange={handleChange} fullWidth required />
+          <TextField label="Nombre (s)" name="name" value={formData.name} onChange={handleChange} fullWidth required />
+          <TextField label="Apellidos" name="surname" value={formData.surname} onChange={handleChange} fullWidth required />
         </Box>
 
         <TextField
@@ -214,22 +327,206 @@ function RegisterPersonForm() {
             </Box>
           )}
         </Box>
-        <TextField label="Genero" name="gender" value={formData.gender} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
-        <TextField label="Estado Civil" name="civil_status" value={formData.civil_status} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+        <Box
+  sx={{
+    display: 'flex', // Para colocar elementos en línea
+    justifyContent: 'space-between', // Distribuye espacio entre los elementos
+    gap: 2, // Espaciado entre los selectores
+    mt: 2, // Margen superior
+  }}
+>
+
+<FormControl
+    fullWidth
+    sx={{
+      flex: 1, // Permite que cada selector ocupe el mismo ancho
+      mr: 1, // Margen derecho opcional
+    }}
+  >
+    <InputLabel id="gender-select-label">Género</InputLabel>
+    <Select
+      labelId="gender-select-label"
+      value={formData.gender}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, gender: e.target.value }))
+      }
+      required
+      sx={{
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <MenuItem value="Femenino">Femenino</MenuItem>
+      <MenuItem value="Masculino">Masculino</MenuItem>
+    </Select>
+  </FormControl>
+
+  <FormControl
+    fullWidth
+    sx={{
+      flex: 1, // Permite que cada selector ocupe el mismo ancho
+      ml: 1, // Margen izquierdo opcional
+    }}
+  >
+    <InputLabel id="civil-status-select-label">Estado Civil</InputLabel>
+    <Select
+      labelId="civil-status-select-label"
+      value={formData.civil_status}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, civil_status: e.target.value }))
+      }
+      required
+      sx={{
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <MenuItem value="Soltero/a">Soltero/a</MenuItem>
+      <MenuItem value="Casado/a">Casado/a</MenuItem>
+      <MenuItem value="Divorciado/a">Divorciado/a</MenuItem>
+      <MenuItem value="Viudo/a">Viudo/a</MenuItem>
+    </Select>
+  </FormControl>
+</Box>
         <TextField label="Dirección" name="address" value={formData.address} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
-        <TextField label="Estado/Provincia" name="estate" value={formData.estate} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+        <FormControl
+  fullWidth
+  sx={{
+    mt: 2,
+    backgroundColor: '#ffffff', // Fondo blanco
+    borderRadius: '8px', // Bordes redondeados
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+  }}
+>
+  <InputLabel id="estate-select-label">Estado/Provincia</InputLabel>
+  <Select
+    labelId="estate-select-label"
+    value={formData.estate}
+    onChange={(e) =>
+      setFormData((prev) => ({ ...prev, estate: e.target.value }))
+    }
+    required
+  >
+    <MenuItem value="Ninguno">Ninguno</MenuItem>
+    <MenuItem value="Aguascalientes">Aguascalientes</MenuItem>
+    <MenuItem value="Baja California">Baja California</MenuItem>
+    <MenuItem value="Baja California Sur">Baja California Sur</MenuItem>
+    <MenuItem value="Campeche">Campeche</MenuItem>
+    <MenuItem value="Chiapas">Chiapas</MenuItem>
+    <MenuItem value="Chihuahua">Chihuahua</MenuItem>
+    <MenuItem value="Ciudad de México">Ciudad de México</MenuItem>
+    <MenuItem value="Coahuila">Coahuila</MenuItem>
+    <MenuItem value="Colima">Colima</MenuItem>
+    <MenuItem value="Durango">Durango</MenuItem>
+    <MenuItem value="Estado de México">Estado de México</MenuItem>
+    <MenuItem value="Guanajuato">Guanajuato</MenuItem>
+    <MenuItem value="Guerrero">Guerrero</MenuItem>
+    <MenuItem value="Hidalgo">Hidalgo</MenuItem>
+    <MenuItem value="Jalisco">Jalisco</MenuItem>
+    <MenuItem value="Michoacán">Michoacán</MenuItem>
+    <MenuItem value="Morelos">Morelos</MenuItem>
+    <MenuItem value="Nayarit">Nayarit</MenuItem>
+    <MenuItem value="Nuevo León">Nuevo León</MenuItem>
+    <MenuItem value="Oaxaca">Oaxaca</MenuItem>
+    <MenuItem value="Puebla">Puebla</MenuItem>
+    <MenuItem value="Querétaro">Querétaro</MenuItem>
+    <MenuItem value="Quintana Roo">Quintana Roo</MenuItem>
+    <MenuItem value="San Luis Potosí">San Luis Potosí</MenuItem>
+    <MenuItem value="Sinaloa">Sinaloa</MenuItem>
+    <MenuItem value="Sonora">Sonora</MenuItem>
+    <MenuItem value="Tabasco">Tabasco</MenuItem>
+    <MenuItem value="Tamaulipas">Tamaulipas</MenuItem>
+    <MenuItem value="Tlaxcala">Tlaxcala</MenuItem>
+    <MenuItem value="Veracruz">Veracruz</MenuItem>
+    <MenuItem value="Yucatán">Yucatán</MenuItem>
+    <MenuItem value="Zacatecas">Zacatecas</MenuItem>
+  </Select>
+</FormControl>
 
         <FormControlLabel
           control={<Checkbox checked={formData.foreign} onChange={() => setFormData({ ...formData, foreign: !formData.foreign })} />}
           label="Foráneo"
         />
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
-          <TextField label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} fullWidth required />
-          <TextField label="Ocupación" name="occupation" value={formData.occupation} onChange={handleChange} fullWidth required />
-        </Box>
+<Box
+  sx={{
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 2,
+    mt: 2,
+  }}
+>
+  <TextField
+    label="Teléfono"
+    name="phone"
+    value={formData.phone}
+    onChange={handleChange}
+    fullWidth
+    required
+  />
 
-        <TextField label="Últimos Estudios" name="last_studies" value={formData.last_studies} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+  <FormControl
+    fullWidth
+    sx={{
+      backgroundColor: '#ffffff', // Fondo blanco
+      borderRadius: '8px', // Bordes redondeados
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+    }}
+  >
+    <InputLabel id="occupation-select-label">Ocupación</InputLabel>
+    <Select
+      labelId="occupation-select-label"
+      value={formData.occupation}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, occupation: e.target.value }))
+      }
+      required
+    >
+      <MenuItem value="Estudiante">Estudiante</MenuItem>
+      <MenuItem value="Empleado">Empleado</MenuItem>
+      <MenuItem value="Independiente">Independiente</MenuItem>
+      <MenuItem value="Desempleado">Desempleado</MenuItem>
+      <MenuItem value="Empresario">Empresario</MenuItem>
+      <MenuItem value="Docente">Docente</MenuItem>
+      <MenuItem value="Ingeniero">Ingeniero</MenuItem>
+      <MenuItem value="Médico">Médico</MenuItem>
+      <MenuItem value="Abogado">Abogado</MenuItem>
+      <MenuItem value="Otro">Otro</MenuItem>
+    </Select>
+  </FormControl>
+</Box>
+
+
+<FormControl
+  fullWidth
+  sx={{
+    mt: 2,
+    backgroundColor: '#ffffff', // Fondo blanco
+    borderRadius: '8px', // Bordes redondeados
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+  }}
+>
+  <InputLabel id="last-studies-select-label">Últimos Estudios</InputLabel>
+  <Select
+    labelId="last-studies-select-label"
+    value={formData.last_studies}
+    onChange={(e) =>
+      setFormData((prev) => ({ ...prev, last_studies: e.target.value }))
+    }
+    required
+  > 
+    <MenuItem value="Preescolar">Preescolar</MenuItem>
+    <MenuItem value="Primaria">Primaria</MenuItem>
+    <MenuItem value="Secundaria">Secundaria</MenuItem>
+    <MenuItem value="Preparatoria">Preparatoria</MenuItem>
+    <MenuItem value="Licenciatura">Licenciatura</MenuItem>
+    <MenuItem value="Maestría">Maestría</MenuItem>
+    <MenuItem value="Doctorado">Doctorado</MenuItem>
+  </Select>
+</FormControl>
+
 
         <Box {...getRootAddressProofProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
           <input {...getInputAddressProofProps()} />
