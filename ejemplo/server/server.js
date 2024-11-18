@@ -558,6 +558,12 @@ app.get('/api/assistence/entradasSinSalida', (req, res) => {
   });
 });
 
+
+
+
+
+
+
 // Endpoints
 app.get('/api/areas', (req, res) => {
   const query = 'SELECT id, area_name, abbreviation FROM areas'; 
