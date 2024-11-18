@@ -219,7 +219,7 @@ function PeopleTable({ onSelectPerson }) {
                     <TableCell key={col.id} align="center">
                       {col.id === 'photo' ? (
                         row[col.id] ? (
-                          <Avatar
+                          <Avatar       
                           sx={{ width: 56, height: 56 }}
                             src={row[col.id]}
                             alt="Avatar"
