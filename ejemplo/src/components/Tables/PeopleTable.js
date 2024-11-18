@@ -220,12 +220,13 @@ function PeopleTable({ onSelectPerson }) {
                       {col.id === 'photo' ? (
                         row[col.id] ? (
                           <Avatar
+                          sx={{ width: 56, height: 56 }}
                             src={row[col.id]}
                             alt="Avatar"
                             onError={handleImageError}
                           />
                         ) : (
-                          <Avatar sx={{ bgcolor: 'grey' }}>N/A</Avatar> // Avatar gris si no hay foto
+                          <Avatar sx={{ width: 56, height: 56 }}>N/A</Avatar> // Avatar gris si no hay foto
                         )
                       ) : (
                         row[col.id]?.toString() || ''

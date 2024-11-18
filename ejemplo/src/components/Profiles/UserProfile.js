@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, Link } from '@mui/material';
+import { Box, Button, Typography, Link, Divider } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import EditIcon from '@mui/icons-material/Edit';
 import HistoryIcon from '@mui/icons-material/History';
 import { Heading } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
-import BasicInfo from './BasicInfo';
-import ContactInfo from './ContactInfo';
-import AddressInfo from './AddressInfo';
-import StudiesInfo from './StudiesInfo';
 import axios from 'axios';
 
 function UserProfile() {
@@ -74,32 +70,58 @@ function UserProfile() {
     return <h1>Perfil no encontrado</h1>;
   }
 
-  // Construir las URLs correctas usando la ruta /uploads como se guarda en la base de datos
-  const addressProofUrl = person.address_proof ? `http://localhost:3001${person.address_proof}` : null;
-  const idCardUrl = person.id_card ? `http://localhost:3001${person.id_card}` : null;
-
   return (
-    <Box sx={{ p: 4, backgroundColor: '#FFF', borderRadius: '6px', boxShadow: 3, maxWidth: '1000px', margin: '0 auto' }}>
+    <Box sx={{ p: 4, backgroundColor: '#FFF', borderRadius: '6px', boxShadow: 3, maxWidth: '800px', margin: '0 auto' }}>
       <Heading size="lg" mb={5}>Perfil de Usuario</Heading>
 
-      {/* Renderizar los componentes de información */}
-      <BasicInfo person={person} />
-      <ContactInfo person={person} getStatusBadge={getStatusBadge} />
-      <AddressInfo person={person} />
-      <StudiesInfo person={person} />
+      {/* Información básica */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Información Básica</Typography>
+        <Divider />
+        <Typography variant="body1"><strong>Folio:</strong> {person.folio}</Typography>
+        <Typography variant="body1"><strong>Nombre:</strong> {person.name} {person.surname}</Typography>
+        <Typography variant="body1"><strong>Fecha de Nacimiento:</strong> {new Date(person.birth_date).toLocaleDateString()}</Typography>
+        <Typography variant="body1"><strong>Género:</strong> {person.gender}</Typography>
+        <Typography variant="body1"><strong>Estado Civil:</strong> {person.civil_status}</Typography>
+      </Box>
+
+      {/* Información de contacto */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Información de Contacto</Typography>
+        <Divider />
+        <Typography variant="body1"><strong>Teléfono:</strong> {person.phone}</Typography>
+        <Typography variant="body1"><strong>Dirección:</strong> {person.address}, {person.estate}</Typography>
+        <Typography variant="body1"><strong>Foráneo:</strong> {person.foreign ? 'Sí' : 'No'}</Typography>
+      </Box>
+
+      {/* Información académica */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Información Académica</Typography>
+        <Divider />
+        <Typography variant="body1"><strong>Últimos Estudios:</strong> {person.last_studies}</Typography>
+        <Typography variant="body1"><strong>Ocupación:</strong> {person.occupation}</Typography>
+      </Box>
+
+      {/* Estado */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Estado</Typography>
+        <Divider />
+        {getStatusBadge(person.status)}
+      </Box>
 
       {/* Archivos PDF subidos */}
       <Box mt={4}>
-        <Typography variant="h6">Documentos</Typography>
+        <Typography variant="h6" gutterBottom>Documentos</Typography>
+        <Divider />
 
         {/* Comprobante de domicilio */}
-        {addressProofUrl ? (
+        {person.address_proof ? (
           <Box mt={2}>
             <Typography variant="body1">Comprobante de Domicilio:</Typography>
             <Link 
-              href={addressProofUrl} 
+              href={`data:application/pdf;base64,${person.address_proof}`} 
               target="_blank" 
-              download
+              download="Comprobante_Domicilio.pdf"
               sx={{ 
                 textDecoration: 'none',
                 color: '#1976d2',
@@ -114,13 +136,13 @@ function UserProfile() {
         )}
 
         {/* Identificación */}
-        {idCardUrl ? (
+        {person.id_card ? (
           <Box mt={2}>
             <Typography variant="body1">Identificación:</Typography>
             <Link 
-              href={idCardUrl} 
+              href={`data:application/pdf;base64,${person.id_card}`} 
               target="_blank" 
-              download
+              download="Identificacion.pdf"
               sx={{ 
                 textDecoration: 'none',
                 color: '#1976d2',
@@ -145,7 +167,13 @@ function UserProfile() {
         </Button>
         <Button
           variant="outlined"
-          sx={{ textTransform: 'none', ml: 2, color: '#006400', borderColor: '#006400', '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' }}}
+          sx={{
+            textTransform: 'none',
+            ml: 2,
+            color: '#006400',
+            borderColor: '#006400',
+            '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' },
+          }}
           startIcon={<HistoryIcon />}
           onClick={handleHistory}
         >

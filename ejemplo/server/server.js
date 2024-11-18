@@ -29,6 +29,16 @@ db.connect((err) => {
 });
 
 
+
+
+
+
+
+
+
+
+
+
 // Ruta de autenticación (login)
 app.post('/api/login', (req, res) => {
   const { usuario, password } = req.body;
@@ -68,10 +78,20 @@ app.post('/api/login', (req, res) => {
     }
   });
 });
-app.use((req, res, next) => {
-  console.log(`Solicitud recibida: ${req.method} ${req.url}`);
-  next(); // Asegura que se pase al siguiente middleware o ruta
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Ruta de ejemplo para obtener las áreas
 app.get('/api/areas', (req, res) => {
@@ -84,6 +104,19 @@ app.get('/api/areas', (req, res) => {
     res.json(results);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Configuración de Multer para almacenar archivos en memoria
 const storage = multer.memoryStorage();
@@ -103,6 +136,20 @@ const upload = multer({
     cb(null, true);
   }
 });;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.get('/api/last-folio/:abbreviation', (req, res) => {
   const { abbreviation } = req.params;
   const query = `
@@ -122,6 +169,20 @@ app.get('/api/last-folio/:abbreviation', (req, res) => {
     res.json({ lastFolioNumber });
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Create person endpoint - updated to match new schema
@@ -167,7 +228,6 @@ app.post(
       if (folioExists) {
         return res.status(400).json({ error: 'The folio already exists.' });
       }
-
       // Proceed with the insertion if the folio doesn't exist
       const insertQuery = `
         INSERT INTO main_persona (
@@ -210,6 +270,16 @@ app.post(
 );
 
 
+
+
+
+
+
+
+
+
+
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -221,6 +291,17 @@ app.use((err, req, res, next) => {
   }
   next();
 });
+
+
+
+
+
+
+
+
+
+
+
 // Ruta para obtener todas las personas y sus fotos/documentos
 app.get('/api/personas', (req, res) => {
   const query = `
@@ -247,6 +328,16 @@ app.get('/api/personas', (req, res) => {
     res.json(processedResults);
   });
 });
+
+
+
+
+
+
+
+
+
+
 
 
 app.get('/api/user-avatar/:id', (req, res) => {
@@ -318,9 +409,28 @@ app.get('/api/assistence', (req, res) => {
       console.error('Error obteniendo asistencias:', error);
       return res.status(500).json({ error: 'Error al obtener asistencias' });
     }
-    res.json(results);
+
+    // Procesar los resultados para convertir las imágenes a Base64
+    const processedResults = results.map((person) => ({
+      ...person,
+      photo: person.photo ? person.photo.toString('base64') : null, // Convertir foto a Base64
+    }));
+
+    res.json(processedResults);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Ruta para registrar entrada
@@ -360,6 +470,19 @@ app.post('/api/assistence/entrada/:id', (req, res) => {
     });
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.put('/api/assistence/salida/:id', (req, res) => {
   const main_persona_id = req.params.id;
@@ -405,6 +528,18 @@ app.put('/api/assistence/salida/:id', (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 // Ruta para obtener entradas sin salida
 app.get('/api/assistence/entradasSinSalida', (req, res) => {
   const query = `
@@ -425,6 +560,21 @@ app.get('/api/assistence/entradasSinSalida', (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+app.use((req, res, next) => {
+  console.log(`Solicitud recibida: ${req.method} ${req.url}`);
+  next(); // Asegura que se pase al siguiente middleware o ruta
+});
 // Inicialización del servidor
 app.listen(3001, () => {
   console.log('Servidor corriendo en el puerto 3001');

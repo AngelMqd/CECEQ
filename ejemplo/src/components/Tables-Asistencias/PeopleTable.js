@@ -42,11 +42,12 @@ function PeopleTable() {
       const response = await axios.get('http://localhost:3001/api/assistence');
       const formattedData = response.data.map((row) => ({
         ...row,
+        photo: row.photo ? `data:image/jpeg;base64,${row.photo}` : null, // Procesar fotos en Base64
         hora_entrada: row.hora_entrada
-          ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss')
+          ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss') // Formatear hora de entrada
           : null,
         hora_salida: row.hora_salida
-          ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss')
+          ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss') // Formatear hora de salida
           : null,
       }));
       setRows(formattedData);
@@ -54,6 +55,7 @@ function PeopleTable() {
       console.error('Error al cargar datos:', error);
     }
   };
+  
 
   const handleEntrada = async (main_persona_id) => {
     if (!main_persona_id) {
@@ -128,12 +130,12 @@ function PeopleTable() {
       <TableRow hover key={index}>
         <TableCell align="center">{row.folio || 'N/A'}</TableCell>
         <TableCell align="center">
-          {row.photo ? (
-            <Avatar src={`http://localhost:3001${row.photo}`} alt="Avatar" />
-          ) : (
-            <Avatar sx={{ bgcolor: 'grey' }}>N/A</Avatar>
-          )}
-        </TableCell>
+                      {row.photo ? (
+                        <Avatar src={row.photo} alt="Foto" sx={{ width: 56, height: 56 }} />
+                      ) : (
+                        <Avatar sx={{ width: 56, height: 56 }}>N/A</Avatar>
+                      )}
+                    </TableCell>
         <TableCell align="center">{row.name || 'N/A'}</TableCell>
         <TableCell align="center">{row.surname || 'N/A'}</TableCell>
         <TableCell align="center">{row.phone || 'N/A'}</TableCell>
@@ -156,7 +158,7 @@ function PeopleTable() {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <h2>Registro de Asistencias</h2>
+     
       <Paper sx={{ width: '100%', mb: 2 }}>
         <TableContainer>
           <Table sx={{ minWidth: 750 }} size="medium">
