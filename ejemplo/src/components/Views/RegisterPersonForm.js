@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Snackbar, Alert, Checkbox, FormControlLabel } from '@mui/material';
+import React, { useState, useEffect  } from 'react';
+import { Box, Button, TextField, Typography, Snackbar, Alert, Checkbox, FormControlLabel,   FormControl, InputLabel,Select, MenuItem} from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import InsertPhoto from '@mui/icons-material/InsertPhoto';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
@@ -7,6 +7,10 @@ import RecentActorsIcon from '@mui/icons-material/RecentActors';
 import axios from 'axios';
 
 function RegisterPersonForm() {
+
+  const [areas, setAreas] = useState([]);
+  const [selectedAbbreviation, setSelectedAbbreviation] = useState('');
+  const [lastFolioNumber, setLastFolioNumber] = useState(0);
   const [formData, setFormData] = useState({
     folio: '',
     name: '',
@@ -20,6 +24,7 @@ function RegisterPersonForm() {
     phone: '',
     occupation: '',
     last_studies: '',
+    area_id: '',
   });
 
   const [photo, setPhoto] = useState(null);
@@ -135,7 +140,7 @@ function RegisterPersonForm() {
     formDataToSend.append('phone', formData.phone);
     formDataToSend.append('occupation', formData.occupation);
     formDataToSend.append('last_studies', formData.last_studies);
-
+    formDataToSend.append('area_id', formData.area_id);
     if (photo) {
       const photoName = `${formData.name}_${formData.surname}.jpg`;
       formDataToSend.append('photo', photo, photoName);
@@ -171,6 +176,59 @@ function RegisterPersonForm() {
     }
   };
 
+  useEffect(() => {
+    axios
+      .get('http://localhost:3001/api/areas')
+      .then((response) => {
+        if (response.data.length > 0) {
+          setAreas(response.data);
+        } else {
+          console.error('No se encontraron áreas');
+        }
+      })
+      .catch((error) => {
+        console.error('Error al obtener las áreas:', error.response || error.message);
+        setNotification({
+          open: true,
+          message: 'Error al cargar las áreas',
+          type: 'error',
+        });
+      });
+  }, []);
+  
+
+  useEffect(() => {
+    if (selectedAbbreviation) {
+      const newFolio = `${selectedAbbreviation}${String(lastFolioNumber + 1).padStart(4, '0')}`;
+      setFormData(prev => ({ ...prev, folio: newFolio }));
+    }
+  }, [selectedAbbreviation, lastFolioNumber]);
+
+  const handleAreaChange = (event) => {
+    const selectedArea = areas.find(area => area.id === event.target.value);
+    if (selectedArea) {
+      setFormData(prev => ({ ...prev, area_id: selectedArea.id }));
+      setSelectedAbbreviation(selectedArea.abbreviation);
+
+      // Obtener el último folio para esta área
+      axios
+      .get(`http://localhost:3001/api/last-folio/${selectedArea.abbreviation}`)
+      .then((response) => {
+        setLastFolioNumber(response.data.lastFolioNumber || 0);
+      })
+      .catch((error) => {
+        console.error('Error al obtener el último folio:', error.response || error.message);
+        setNotification({
+          open: true,
+          message: `Error al obtener el número de folio: ${error.response?.data?.error || error.message}`,
+          type: 'error'
+        });
+      });
+    
+    }
+  };
+
+
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
@@ -180,7 +238,38 @@ function RegisterPersonForm() {
       <Box sx={{ maxWidth: '800px', margin: '0 auto', p: 4, backgroundColor: '#ffffff', borderRadius: '8px' }}>
         <Typography variant="h5" mb={3}>Registrar Persona</Typography>
 
-        <TextField label="Folio" name="folio" value={formData.folio} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id="area-select-label">Área</InputLabel>
+          <Select
+            labelId="area-select-label"
+            value={formData.area_id}
+            onChange={handleAreaChange}
+            required
+          >
+            {areas.map((area) => (
+              <MenuItem key={area.id} value={area.id}>
+                {area.area_name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {selectedAbbreviation && (
+          <Typography variant="body1" color="primary" sx={{ mt: 2 }}>
+            Abreviación seleccionada: <strong>{selectedAbbreviation}</strong>
+          </Typography>
+        )}
+
+        {formData.folio && (
+          <TextField
+            label="Folio"
+            name="folio"
+            value={formData.folio}
+            fullWidth
+            InputProps={{ readOnly: true }}
+            sx={{ mt: 2 }}
+          />
+        )}
 
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
           <TextField label="Nombre" name="name" value={formData.name} onChange={handleChange} fullWidth required />

@@ -68,13 +68,28 @@ app.post('/api/login', (req, res) => {
     }
   });
 });
+app.use((req, res, next) => {
+  console.log(`Solicitud recibida: ${req.method} ${req.url}`);
+  next(); // Asegura que se pase al siguiente middleware o ruta
+});
 
+// Ruta de ejemplo para obtener las áreas
+app.get('/api/areas', (req, res) => {
+  const query = 'SELECT id, area_name, abbreviation FROM areas';
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error al obtener las áreas:', err); // Agrega este mensaje para depuración
+      return res.status(500).json({ error: 'Error al obtener las áreas de la base de datos' });
+    }
+    res.json(results);
+  });
+});
 
-// Configuración de Multer para recibir archivos sin guardarlos en el sistema de archivos
+// Configuración de Multer para almacenar archivos en memoria
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10485760 }, // 10 MB
+  limits: { fileSize: 10485760 }, // Límite de 10 MB
   fileFilter: (req, file, cb) => {
     const validMimeTypes = {
       photo: ['image/jpeg', 'image/png', 'image/jpg'],
@@ -82,43 +97,39 @@ const upload = multer({
       id_card: ['application/pdf']
     };
 
-    if (validMimeTypes[file.fieldname] && !validMimeTypes[file.fieldname].includes(file.mimetype)) {
+    if (!validMimeTypes[file.fieldname]?.includes(file.mimetype)) {
       return cb(new Error(`Tipo de archivo no válido para ${file.fieldname}`));
     }
     cb(null, true);
   }
-});
-
-app.post('/api/crud', upload.fields([{ name: 'photo' }, { name: 'address_proof' }, { name: 'id_card' }]), (req, res) => {
-  const {
-    folio,
-    name,
-    surname,
-    birth_date,
-    gender,
-    civil_status,
-    address,
-    estate,
-    foreign: isForeign,
-    phone,
-    occupation,
-    last_studies,
-  } = req.body;
-
-  const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
-  const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
-  const idCard = req.files['id_card'] ? req.files['id_card'][0].buffer : null;
-
+});;
+app.get('/api/last-folio/:abbreviation', (req, res) => {
+  const { abbreviation } = req.params;
   const query = `
-    INSERT INTO main_persona (
-      folio, name, surname, birth_date, gender, civil_status, address, estate,
-      \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    SELECT MAX(CAST(SUBSTRING(folio, LENGTH(folio) - 3 + 1) AS UNSIGNED)) AS lastFolioNumber
+    FROM main_persona;
   `;
 
-  db.query(
-    query,
-    [
+
+  db.query(query, [abbreviation, abbreviation], (err, results) => {
+    if (err) {
+      console.error('Error fetching last folio number:', err);
+      return res.status(500).json({ error: 'Error fetching last folio number' });
+    }
+
+    // Validar que haya resultados
+    const lastFolioNumber = results[0]?.lastFolioNumber || 0;
+    res.json({ lastFolioNumber });
+  });
+});
+
+
+// Create person endpoint - updated to match new schema
+app.post(
+  '/api/crud',
+  upload.fields([{ name: 'photo' }, { name: 'address_proof' }, { name: 'id_card' }]),
+  (req, res) => {
+    const {
       folio,
       name,
       surname,
@@ -127,22 +138,88 @@ app.post('/api/crud', upload.fields([{ name: 'photo' }, { name: 'address_proof' 
       civil_status,
       address,
       estate,
-      isForeign,
+      foreign: isForeign,
       phone,
       occupation,
       last_studies,
-      photo,
-      addressProof,
-      idCard,
-    ],
-    (err) => {
-      if (err) {
-        console.error('Error al guardar en la base de datos:', err);
-        return res.status(500).json({ error: 'Error al guardar en la base de datos' });
-      }
-      res.json({ message: 'Persona registrada con éxito' });
+      area_id
+    } = req.body;
+
+    const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
+    const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
+    const idCard = req.files['id_card'] ? req.files['id_card'][0].buffer : null;
+
+    // Validate required fields
+    if (!folio || !name || !surname || !birth_date || !gender || !civil_status || !address || !phone || !area_id) {
+      return res.status(400).json({ error: 'All required fields must be completed.' });
     }
-  );
+
+    // Check if the folio already exists
+    const checkFolioQuery = 'SELECT COUNT(*) AS count FROM main_persona WHERE folio = ?';
+
+    db.query(checkFolioQuery, [folio], (err, results) => {
+      if (err) {
+        console.error('Error checking folio:', err);
+        return res.status(500).json({ error: 'Error checking folio' });
+      }
+
+      const folioExists = results[0].count > 0;
+      if (folioExists) {
+        return res.status(400).json({ error: 'The folio already exists.' });
+      }
+
+      // Proceed with the insertion if the folio doesn't exist
+      const insertQuery = `
+        INSERT INTO main_persona (
+          folio, name, surname, birth_date, gender, civil_status, address, estate,
+          \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card, 
+          created_at, updated_at, areas_id, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0)
+      `;
+
+      db.query(
+        insertQuery,
+        [
+          folio,
+          name,
+          surname,
+          birth_date,
+          gender,
+          civil_status,
+          address,
+          estate,
+          isForeign || 0,
+          phone,
+          occupation,
+          last_studies,
+          photo,
+          addressProof,
+          idCard,
+          area_id
+        ],
+        (err) => {
+          if (err) {
+            console.error('Error saving to database:', err);
+            return res.status(500).json({ error: 'Error saving to database' });
+          }
+          res.json({ message: 'Person registered successfully' });
+        }
+      );
+    });
+  }
+);
+
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: 'File processing error: ' + err.message });
+  }
+  if (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error occurred' });
+  }
+  next();
 });
 // Ruta para obtener todas las personas y sus fotos/documentos
 app.get('/api/personas', (req, res) => {
