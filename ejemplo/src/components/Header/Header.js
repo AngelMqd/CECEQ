@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import BadgeAvatars from './badgeAvatars';
-import SearchBar from './searchBar';
 import {
   IconButton,
   Box,
   Text,
   HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  useColorModeValue,
-  useBreakpointValue,
-  Collapse,
+  VStack,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverArrow,
+  PopoverCloseButton,
+  PopoverHeader,
+  PopoverBody,
+  Button,
+  useDisclosure,
 } from '@chakra-ui/react';
 import {
   ExitToApp,
@@ -24,8 +26,15 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import BadgeAvatars from './badgeAvatars';
+import SearchBar from './searchBar';
+import { useBreakpointValue } from '@chakra-ui/react';
+
 
 const Header = ({ toggleSidebar, onLogout }) => {
+  const { isOpen, onOpen, onClose } = useDisclosure(); // Manejo del modal de notificaciones
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [userPhoto, setUserPhoto] = useState(null); // Foto del usuario
@@ -64,6 +73,41 @@ const Header = ({ toggleSidebar, onLogout }) => {
     fetchUserPhoto();
   }, []);
 
+  // Maneja la apertura del modal y carga las notificaciones
+  const handleOpenNotifications = () => {
+    onOpen();
+    fetchNotifications();
+  };
+
+  // Función para cargar las notificaciones desde la tabla `warnings`
+  const fetchNotifications = async () => {
+    console.log("Iniciando carga de notificaciones...");
+    setLoading(true);
+    try {
+      const response = await axios.get('http://localhost:3001/api/notifications');
+      console.log("Datos recibidos:", response.data); // Depuración para ver los datos
+      setNotifications(response.data); // Actualiza las notificaciones
+    } catch (error) {
+      console.error('Error al cargar las notificaciones:', error);
+      setNotifications([]); // Manejo en caso de error: lista vacía
+    } finally {
+      console.log("Finalizando carga de notificaciones."); // Depuración
+      setLoading(false); // Cambiar el estado a false
+    }
+  };
+  
+  
+
+  // Función para marcar la notificación como revisada
+  const handleMarkAsChecked = async (id) => {
+    try {
+      await axios.put(`http://localhost:3001/api/notifications/${id}/check`);
+      setNotifications(notifications.filter((notif) => notif.id !== id)); // Remueve la notificación de la lista
+    } catch (error) {
+      console.error('Error al marcar la notificación como revisada:', error);
+    }
+  };
+
   const handleAddPerson = () => {
     navigate('/registrar-persona');
   };
@@ -80,7 +124,7 @@ const Header = ({ toggleSidebar, onLogout }) => {
   return (
     <>
       <Box
-        bg={useColorModeValue('white', 'gray.900')}
+        bg="white"
         px={4}
         py={2}
         position="fixed"
@@ -130,9 +174,10 @@ const Header = ({ toggleSidebar, onLogout }) => {
 
           <HStack spacing={4} alignItems="center">
             <IconButton
-              aria-label="Notifications"
+              aria-label="Notificaciones"
               icon={<Notifications fontSize="small" />}
               variant="ghost"
+              onClick={handleOpenNotifications}
               sx={{
                 color: '#6E40C9',
                 bg: 'rgba(106, 39, 196, 0.1)',
@@ -211,44 +256,150 @@ const Header = ({ toggleSidebar, onLogout }) => {
             </Box>
           </HStack>
         </HStack>
-
-        {/* Barra de búsqueda colapsable */}
-        {!showSearchFull && (
-          <Collapse in={searchOpen} animateOpacity>
-            <InputGroup mt={5} w="full">
-              <InputLeftElement
-                pointerEvents="none"
-                children={<Search style={{ fontSize: 28, color: '#9e9e9e' }} />}
-              />
-              <Input
-                type="text"
-                placeholder="Buscar Usuario"
-                border="none"
-                _focus={{ outline: 'none', boxShadow: 'none' }}
-                _placeholder={{ color: 'gray.500' }}
-                h="30px"
-                pl="50px"
-                pr="270px"
-                bg="transparent"
-              />
-              <IconButton
-                aria-label="Filter"
-                icon={<Tune style={{ fontSize: 22 }} />}
-                borderRadius="lg"
-                position="absolute"
-                right="0"
-                mt="-10px"
-                mr="10px"
-                h="40px"
-                w="40px"
-                bg="rgba(139, 92, 246, 0.1)"
-                _hover={{ color: 'rgba(255, 255, 255)', bg: 'rgba(139, 92, 246, 0.3)' }}
-                _active={{ bg: 'rgba(139, 92, 246, 0.5)' }}
-              />
-            </InputGroup>
-          </Collapse>
-        )}
       </Box>
+
+      {/* Modal para mostrar notificaciones */}
+  <Box
+        bg="white"
+        px={4}
+        py={2}
+        position="fixed"
+        w="full"
+        top="0"
+        left="0"
+        zIndex="1"
+      >
+        <HStack justifyContent="space-between" alignItems="center">
+          <HStack spacing={5} alignItems="center">
+            <Text fontSize="xl" fontWeight="bold" color="black" pr="70px">
+              SAG
+            </Text>
+            <IconButton
+              aria-label="Menu"
+              icon={<Menu fontSize="small" />}
+              onClick={toggleSidebar}
+              variant="ghost"
+              sx={{
+                color: '#6E40C9',
+                bg: 'rgba(106, 39, 196, 0.1)',
+                _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
+                _active: { bg: 'rgba(106, 39, 196, 0.5)' },
+                borderRadius: '10px',
+                padding: '6px',
+              }}
+            />
+            {showSearchFull && <SearchBar />}
+          </HStack>
+
+          <HStack spacing={4} alignItems="center">
+            {/* Notificaciones */}
+            <Popover>
+              <PopoverTrigger>
+                <IconButton
+                  aria-label="Notificaciones"
+                  icon={<Notifications fontSize="small" />}
+                  variant="ghost"
+                  onClick={handleOpenNotifications}
+                  sx={{
+                    color: '#6E40C9',
+                    bg: 'rgba(106, 39, 196, 0.1)',
+                    _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
+                    _active: { bg: 'rgba(106, 39, 196, 0.5)' },
+                    borderRadius: '10px',
+                    padding: '6px',
+                  }}
+                />
+              </PopoverTrigger>
+              <PopoverContent>
+                <PopoverArrow />
+                <PopoverCloseButton />
+                <PopoverHeader>Notificaciones</PopoverHeader>
+                <PopoverBody>
+  {loading ? (
+    <Text>Cargando notificaciones...</Text>
+  ) : notifications.length > 0 ? (
+    <VStack align="start" spacing={4}>
+      {notifications.map((notif) => (
+        <Box
+          key={notif.id}
+          borderWidth="1px"
+          borderRadius="lg"
+          p={4}
+          w="100%"
+          bg="gray.50"
+        >
+          <Text>
+            <strong>Área:</strong> {notif.area_name}
+          </Text>
+          <Text>
+            <strong>Persona:</strong> {notif.main_persona_name}
+          </Text>
+          <Text>
+            <strong>Razón:</strong> {notif.reason}
+          </Text>
+          <Text>
+            <strong>Fecha de emisión:</strong> {new Date(notif.date_issued).toLocaleDateString()}
+          </Text>
+          <Button
+            size="sm"
+            mt={2}
+            colorScheme="purple"
+            onClick={() => handleMarkAsChecked(notif.id)}
+          >
+            Marcar como visto
+          </Button>
+        </Box>
+      ))}
+    </VStack>
+  ) : (
+    <Text>No hay notificaciones disponibles.</Text>
+  )}
+</PopoverBody>
+              </PopoverContent>
+            </Popover>
+
+            <IconButton
+              aria-label="Add Person"
+              icon={<Add fontSize="small" />}
+              variant="ghost"
+              onClick={handleAddPerson}
+              sx={{
+                color: '#6E40C9',
+                bg: 'rgba(106, 39, 196, 0.1)',
+                _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
+                _active: { bg: 'rgba(106, 39, 196, 0.5)' },
+                borderRadius: '10px',
+                padding: '6px',
+              }}
+            />
+
+            <IconButton
+              aria-label="Settings"
+              icon={<Settings fontSize="small" />}
+              variant="ghost"
+              sx={{
+                color: '#6E40C9',
+                bg: 'rgba(106, 39, 196, 0.1)',
+                _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
+                _active: { bg: 'rgba(106, 39, 196, 0.5)' },
+                borderRadius: '10px',
+                padding: '6px',
+              }}
+            />
+
+            <Box position="relative">
+              <IconButton
+                aria-label="User menu"
+                icon={userPhoto ? <BadgeAvatars avatarUrl={userPhoto} /> : <Text color="gray.500">Sin foto</Text>}
+                onClick={toggleLogoutMenu}
+                variant="ghost"
+              />
+            </Box>
+          </HStack>
+        </HStack>
+      </Box>
+
+
     </>
   );
 };
