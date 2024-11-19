@@ -6,6 +6,7 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import RecentActorsIcon from '@mui/icons-material/RecentActors';
 import axios from 'axios';
 
+
 function RegisterPersonForm() {
 
   const [areas, setAreas] = useState([]);
@@ -289,7 +290,9 @@ function RegisterPersonForm() {
     <form onSubmit={handleSubmit}>
       <Box sx={{ maxWidth: '800px', margin: '0 auto', p: 4, backgroundColor: '#ffffff', borderRadius: '8px' }}>
         <Typography variant="h5" mb={3}>Registrar Persona</Typography>
-        
+        <Typography variant="h6" color="primary">
+      Información Básica
+    </Typography>
         <FormControl fullWidth sx={{ mt: 2 }}>
           <InputLabel id="area-select-label">Área</InputLabel>
           <Select
@@ -321,7 +324,7 @@ function RegisterPersonForm() {
         </FormControl>
 
         {selectedAbbreviation && (
-          <Typography variant="body1" color="primary" sx={{ mt: 2 }}>
+          <Typography variant="body1" color="secondary" sx={{ mt: 2 }}>
             Abreviación seleccionada: <strong>{selectedAbbreviation}</strong>
           </Typography>
         )}
@@ -353,6 +356,346 @@ function RegisterPersonForm() {
           InputLabelProps={{ shrink: true }}
           sx={{ mt: 2 }}
         />
+
+<Box
+  sx={{
+    display: 'flex', // Para colocar elementos en línea
+    justifyContent: 'space-between', // Distribuye espacio entre los elementos
+    gap: 2, // Espaciado entre los selectores
+    mt: 2, // Margen superior
+  }}
+>
+<FormControl
+    fullWidth
+    sx={{
+      flex: 1, // Permite que cada selector ocupe el mismo ancho
+      mr: 1, // Margen derecho opcional
+    }}
+  >
+    <InputLabel id="gender-select-label">Género</InputLabel>
+    <Select
+      labelId="gender-select-label"
+      value={formData.gender}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, gender: e.target.value }))
+      }
+      required
+      sx={{
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <MenuItem value="Femenino">Femenino</MenuItem>
+      <MenuItem value="Masculino">Masculino</MenuItem>
+    </Select>
+  </FormControl>
+
+  <FormControl
+    fullWidth
+    sx={{
+      flex: 1, // Permite que cada selector ocupe el mismo ancho
+      ml: 1, // Margen izquierdo opcional
+      mb:1
+    }}
+  >
+    <InputLabel id="civil-status-select-label">Estado Civil</InputLabel>
+    <Select
+      labelId="civil-status-select-label"
+      value={formData.civil_status}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, civil_status: e.target.value }))
+      }
+      required
+      sx={{
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <MenuItem value="Soltero/a">Soltero/a</MenuItem>
+      <MenuItem value="Casado/a">Casado/a</MenuItem>
+      <MenuItem value="Divorciado/a">Divorciado/a</MenuItem>
+      <MenuItem value="Viudo/a">Viudo/a</MenuItem>
+    </Select>
+  </FormControl>
+</Box >
+
+<FormControlLabel
+        sx={{ mt: 1 }}
+    control={
+      <Checkbox
+        checked={formData.isDisabled || false}
+        onChange={() =>
+          setFormData((prev) => ({ ...prev, isDisabled: !prev.isDisabled }))
+        }
+      />
+    }
+    label="¿Tiene alguna discapacidad?"
+  />
+
+{formData.isDisabled && (
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="h6" color="primary">
+      Información de la Discapacidad
+    </Typography>
+    <FormControl
+      fullWidth
+      sx={{
+        mt: 2,
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <InputLabel id="disability-type-label">Tipo de Discapacidad</InputLabel>
+      <Select
+        labelId="disability-type-label"
+        name="disability_type"
+        value={formData.disability_type || ''}
+        onChange={handleChange}
+        required
+      >
+        <MenuItem value="Visual">Visual</MenuItem>
+        <MenuItem value="Auditiva">Auditiva</MenuItem>
+        <MenuItem value="Motriz">Motriz</MenuItem>
+        <MenuItem value="Intelectual">Intelectual</MenuItem>
+        <MenuItem value="Otra">Otra</MenuItem>
+      </Select>
+    </FormControl>
+    <TextField
+      label="Descripción de la Discapacidad"
+      name="disability_description"
+      value={formData.disability_description || ''}
+      onChange={handleChange}
+      fullWidth
+      multiline
+      rows={3}
+      sx={{ mt: 2 }}
+    />
+  </Box>
+)}
+
+
+<Typography variant="h6" color="primary" sx={{mt: 6}}>
+    Dirección y Contacto
+    </Typography>
+
+
+    <TextField label="Dirección" name="address" value={formData.address} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
+        <FormControl
+  fullWidth
+  sx={{
+    mt: 2,
+    backgroundColor: '#ffffff', // Fondo blanco
+    borderRadius: '8px', // Bordes redondeados
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+  }}
+>
+  <InputLabel id="estate-select-label">Estado/Provincia</InputLabel>
+  <Select
+    labelId="estate-select-label"
+    value={formData.estate}
+    onChange={(e) =>
+      setFormData((prev) => ({ ...prev, estate: e.target.value }))
+    }
+    required
+  >
+    <MenuItem value="Ninguno">Ninguno</MenuItem>
+    <MenuItem value="Aguascalientes">Aguascalientes</MenuItem>
+    <MenuItem value="Baja California">Baja California</MenuItem>
+    <MenuItem value="Baja California Sur">Baja California Sur</MenuItem>
+    <MenuItem value="Campeche">Campeche</MenuItem>
+    <MenuItem value="Chiapas">Chiapas</MenuItem>
+    <MenuItem value="Chihuahua">Chihuahua</MenuItem>
+    <MenuItem value="Ciudad de México">Ciudad de México</MenuItem>
+    <MenuItem value="Coahuila">Coahuila</MenuItem>
+    <MenuItem value="Colima">Colima</MenuItem>
+    <MenuItem value="Durango">Durango</MenuItem>
+    <MenuItem value="Estado de México">Estado de México</MenuItem>
+    <MenuItem value="Guanajuato">Guanajuato</MenuItem>
+    <MenuItem value="Guerrero">Guerrero</MenuItem>
+    <MenuItem value="Hidalgo">Hidalgo</MenuItem>
+    <MenuItem value="Jalisco">Jalisco</MenuItem>
+    <MenuItem value="Michoacán">Michoacán</MenuItem>
+    <MenuItem value="Morelos">Morelos</MenuItem>
+    <MenuItem value="Nayarit">Nayarit</MenuItem>
+    <MenuItem value="Nuevo León">Nuevo León</MenuItem>
+    <MenuItem value="Oaxaca">Oaxaca</MenuItem>
+    <MenuItem value="Puebla">Puebla</MenuItem>
+    <MenuItem value="Querétaro">Querétaro</MenuItem>
+    <MenuItem value="Quintana Roo">Quintana Roo</MenuItem>
+    <MenuItem value="San Luis Potosí">San Luis Potosí</MenuItem>
+    <MenuItem value="Sinaloa">Sinaloa</MenuItem>
+    <MenuItem value="Sonora">Sonora</MenuItem>
+    <MenuItem value="Tabasco">Tabasco</MenuItem>
+    <MenuItem value="Tamaulipas">Tamaulipas</MenuItem>
+    <MenuItem value="Tlaxcala">Tlaxcala</MenuItem>
+    <MenuItem value="Veracruz">Veracruz</MenuItem>
+    <MenuItem value="Yucatán">Yucatán</MenuItem>
+    <MenuItem value="Zacatecas">Zacatecas</MenuItem>
+  </Select>
+</FormControl>
+
+<Box
+  sx={{
+    display: 'flex',
+    flexDirection: 'column', // Orientación en columna
+    gap: 2, // Espaciado entre los elementos
+    mt: 2, // Margen superior opcional
+  }}
+>
+  <FormControlLabel
+    control={
+      <Checkbox
+        checked={formData.foreign}
+        onChange={() =>
+          setFormData((prev) => ({ ...prev, foreign: !prev.foreign }))
+        }
+      />
+    }
+    label="¿Es extranjero?"
+  />
+</Box>
+
+
+
+<Box
+  sx={{
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 2,
+    mt: 2,
+  }}
+>
+  <TextField
+    label="Teléfono"
+    name="phone"
+    value={formData.phone}
+    onChange={handleChange}
+    fullWidth
+    required
+    sx={{mb:6}}
+  />
+</Box>
+
+
+<Typography variant="h6" color="primary" sx={{mt: 2}}>
+Estudios y Ocupación
+    </Typography>
+
+
+
+    <Box sx={{mt: 2}}>
+  <FormControl
+    fullWidth
+    sx={{
+      backgroundColor: '#ffffff', // Fondo blanco
+      borderRadius: '8px', // Bordes redondeados
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+    }}
+  >
+    <InputLabel id="occupation-select-label">Ocupación</InputLabel>
+    <Select
+      labelId="occupation-select-label"
+      value={formData.occupation}
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, occupation: e.target.value }))
+      }
+      required
+    >
+      <MenuItem value="Estudiante">Estudiante</MenuItem>
+      <MenuItem value="Empleado">Empleado</MenuItem>
+      <MenuItem value="Independiente">Independiente</MenuItem>
+      <MenuItem value="Desempleado">Desempleado</MenuItem>
+      <MenuItem value="Empresario">Empresario</MenuItem>
+      <MenuItem value="Docente">Docente</MenuItem>
+      <MenuItem value="Ingeniero">Ingeniero</MenuItem>
+      <MenuItem value="Médico">Médico</MenuItem>
+      <MenuItem value="Abogado">Abogado</MenuItem>
+      <MenuItem value="Otro">Otro</MenuItem>
+    </Select>
+  </FormControl>
+</Box>
+
+
+<FormControl
+  fullWidth
+  sx={{
+    mt: 2,
+    mb:6,
+    backgroundColor: '#ffffff', // Fondo blanco
+    borderRadius: '8px', // Bordes redondeados
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+  }}
+>
+  <InputLabel id="last-studies-select-label">Últimos Estudios</InputLabel>
+  <Select
+    labelId="last-studies-select-label"
+    value={formData.last_studies}
+    onChange={(e) =>
+      setFormData((prev) => ({ ...prev, last_studies: e.target.value }))
+    }
+    required
+  > 
+    <MenuItem value="Preescolar">Preescolar</MenuItem>
+    <MenuItem value="Primaria">Primaria</MenuItem>
+    <MenuItem value="Secundaria">Secundaria</MenuItem>
+    <MenuItem value="Preparatoria">Preparatoria</MenuItem>
+    <MenuItem value="Licenciatura">Licenciatura</MenuItem>
+    <MenuItem value="Maestría">Maestría</MenuItem>
+    <MenuItem value="Doctorado">Doctorado</MenuItem>
+  </Select>
+</FormControl>
+
+
+
+<Typography variant="h6" color="primary" sx={{mt: 2}}>
+Documentos
+    </Typography>
+    <Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
+          <input {...getInputPhotoProps()} />
+          {photoPreview ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img src={photoPreview} alt="Vista previa" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+              <Typography variant="body1" color="primary" sx={{ mt: 2 }}>Haz clic o arrastra para cambiar la foto</Typography>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <InsertPhoto sx={{ fontSize: 80, color: '#ccc' }} />
+              <Typography variant="body1" color="primary">Sube una imagen o arrástrala aquí</Typography>
+              <Typography variant="caption" color="textSecondary">PNG, JPG, GIF hasta 10MB</Typography>
+            </Box>
+          )}
+        </Box>
+       
+
+
+
+
+
+        <Box {...getRootAddressProofProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
+          <input {...getInputAddressProofProps()} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <FolderCopyIcon sx={{ fontSize: 80, color: '#ccc' }} />
+            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Comprobante de Domicilio)</Typography>
+            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
+            {addressProofName && <Typography variant="body2" color="textPrimary">Archivo subido: {addressProofName}</Typography>}
+          </Box>
+        </Box>
+
+        <Box {...getRootIdCardProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px', mb: 6 }}>
+          <input {...getInputIdCardProps()} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <RecentActorsIcon sx={{ fontSize: 80, color: '#ccc' }} />
+            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Identificación)</Typography>
+            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
+            {idCardName && <Typography variant="body2" color="textPrimary">Archivo subido: {idCardName}</Typography>}
+          </Box>
+        </Box>
+
+
+    
 {formData.isMinor && (
   <Box sx={{ mt: 4 }}>
     <Typography variant="h6" color="primary">
@@ -430,296 +773,7 @@ function RegisterPersonForm() {
   </Box>
 )}
 
-        <Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
-          <input {...getInputPhotoProps()} />
-          {photoPreview ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <img src={photoPreview} alt="Vista previa" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
-              <Typography variant="body1" color="primary" sx={{ mt: 2 }}>Haz clic o arrastra para cambiar la foto</Typography>
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <InsertPhoto sx={{ fontSize: 80, color: '#ccc' }} />
-              <Typography variant="body1" color="primary">Sube una imagen o arrástrala aquí</Typography>
-              <Typography variant="caption" color="textSecondary">PNG, JPG, GIF hasta 10MB</Typography>
-            </Box>
-          )}
-        </Box>
-        <Box
-  sx={{
-    display: 'flex', // Para colocar elementos en línea
-    justifyContent: 'space-between', // Distribuye espacio entre los elementos
-    gap: 2, // Espaciado entre los selectores
-    mt: 2, // Margen superior
-  }}
->
-
-<FormControl
-    fullWidth
-    sx={{
-      flex: 1, // Permite que cada selector ocupe el mismo ancho
-      mr: 1, // Margen derecho opcional
-    }}
-  >
-    <InputLabel id="gender-select-label">Género</InputLabel>
-    <Select
-      labelId="gender-select-label"
-      value={formData.gender}
-      onChange={(e) =>
-        setFormData((prev) => ({ ...prev, gender: e.target.value }))
-      }
-      required
-      sx={{
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      <MenuItem value="Femenino">Femenino</MenuItem>
-      <MenuItem value="Masculino">Masculino</MenuItem>
-    </Select>
-  </FormControl>
-
-  <FormControl
-    fullWidth
-    sx={{
-      flex: 1, // Permite que cada selector ocupe el mismo ancho
-      ml: 1, // Margen izquierdo opcional
-    }}
-  >
-    <InputLabel id="civil-status-select-label">Estado Civil</InputLabel>
-    <Select
-      labelId="civil-status-select-label"
-      value={formData.civil_status}
-      onChange={(e) =>
-        setFormData((prev) => ({ ...prev, civil_status: e.target.value }))
-      }
-      required
-      sx={{
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      <MenuItem value="Soltero/a">Soltero/a</MenuItem>
-      <MenuItem value="Casado/a">Casado/a</MenuItem>
-      <MenuItem value="Divorciado/a">Divorciado/a</MenuItem>
-      <MenuItem value="Viudo/a">Viudo/a</MenuItem>
-    </Select>
-  </FormControl>
-</Box>
-        <TextField label="Dirección" name="address" value={formData.address} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
-        <FormControl
-  fullWidth
-  sx={{
-    mt: 2,
-    backgroundColor: '#ffffff', // Fondo blanco
-    borderRadius: '8px', // Bordes redondeados
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-  }}
->
-  <InputLabel id="estate-select-label">Estado/Provincia</InputLabel>
-  <Select
-    labelId="estate-select-label"
-    value={formData.estate}
-    onChange={(e) =>
-      setFormData((prev) => ({ ...prev, estate: e.target.value }))
-    }
-    required
-  >
-    <MenuItem value="Ninguno">Ninguno</MenuItem>
-    <MenuItem value="Aguascalientes">Aguascalientes</MenuItem>
-    <MenuItem value="Baja California">Baja California</MenuItem>
-    <MenuItem value="Baja California Sur">Baja California Sur</MenuItem>
-    <MenuItem value="Campeche">Campeche</MenuItem>
-    <MenuItem value="Chiapas">Chiapas</MenuItem>
-    <MenuItem value="Chihuahua">Chihuahua</MenuItem>
-    <MenuItem value="Ciudad de México">Ciudad de México</MenuItem>
-    <MenuItem value="Coahuila">Coahuila</MenuItem>
-    <MenuItem value="Colima">Colima</MenuItem>
-    <MenuItem value="Durango">Durango</MenuItem>
-    <MenuItem value="Estado de México">Estado de México</MenuItem>
-    <MenuItem value="Guanajuato">Guanajuato</MenuItem>
-    <MenuItem value="Guerrero">Guerrero</MenuItem>
-    <MenuItem value="Hidalgo">Hidalgo</MenuItem>
-    <MenuItem value="Jalisco">Jalisco</MenuItem>
-    <MenuItem value="Michoacán">Michoacán</MenuItem>
-    <MenuItem value="Morelos">Morelos</MenuItem>
-    <MenuItem value="Nayarit">Nayarit</MenuItem>
-    <MenuItem value="Nuevo León">Nuevo León</MenuItem>
-    <MenuItem value="Oaxaca">Oaxaca</MenuItem>
-    <MenuItem value="Puebla">Puebla</MenuItem>
-    <MenuItem value="Querétaro">Querétaro</MenuItem>
-    <MenuItem value="Quintana Roo">Quintana Roo</MenuItem>
-    <MenuItem value="San Luis Potosí">San Luis Potosí</MenuItem>
-    <MenuItem value="Sinaloa">Sinaloa</MenuItem>
-    <MenuItem value="Sonora">Sonora</MenuItem>
-    <MenuItem value="Tabasco">Tabasco</MenuItem>
-    <MenuItem value="Tamaulipas">Tamaulipas</MenuItem>
-    <MenuItem value="Tlaxcala">Tlaxcala</MenuItem>
-    <MenuItem value="Veracruz">Veracruz</MenuItem>
-    <MenuItem value="Yucatán">Yucatán</MenuItem>
-    <MenuItem value="Zacatecas">Zacatecas</MenuItem>
-  </Select>
-</FormControl>
-
-        <FormControlLabel
-          control={<Checkbox checked={formData.foreign} onChange={() => setFormData({ ...formData, foreign: !formData.foreign })} />}
-          label="Foráneo"
-          sx={{ mt: 1 }}
-        />
-<FormControlLabel
-  control={
-    <Checkbox
-      checked={formData.isDisabled || false}
-      onChange={() =>
-        setFormData((prev) => ({ ...prev, isDisabled: !prev.isDisabled }))
-      }
-    />
-  }
-  label="¿Tiene alguna discapacidad?"
-  sx={{ mt: 1 }}
-/>
-{formData.isDisabled && (
-  <Box sx={{ mt: 4 }}>
-    <Typography variant="h6" color="primary">
-      Información de la Discapacidad
-    </Typography>
-    <FormControl
-      fullWidth
-      sx={{
-        mt: 2,
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      <InputLabel id="disability-type-label">Tipo de Discapacidad</InputLabel>
-      <Select
-        labelId="disability-type-label"
-        name="disability_type"
-        value={formData.disability_type || ''}
-        onChange={handleChange}
-        required
-      >
-        <MenuItem value="Visual">Visual</MenuItem>
-        <MenuItem value="Auditiva">Auditiva</MenuItem>
-        <MenuItem value="Motriz">Motriz</MenuItem>
-        <MenuItem value="Intelectual">Intelectual</MenuItem>
-        <MenuItem value="Otra">Otra</MenuItem>
-      </Select>
-    </FormControl>
-    <TextField
-      label="Descripción de la Discapacidad"
-      name="disability_description"
-      value={formData.disability_description || ''}
-      onChange={handleChange}
-      fullWidth
-      multiline
-      rows={3}
-      sx={{ mt: 2 }}
-    />
-  </Box>
-)}
-
-<Box
-  sx={{
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 2,
-    mt: 2,
-  }}
->
-  <TextField
-    label="Teléfono"
-    name="phone"
-    value={formData.phone}
-    onChange={handleChange}
-    fullWidth
-    required
-  />
-
-  <FormControl
-    fullWidth
-    sx={{
-      backgroundColor: '#ffffff', // Fondo blanco
-      borderRadius: '8px', // Bordes redondeados
-      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-    }}
-  >
-    <InputLabel id="occupation-select-label">Ocupación</InputLabel>
-    <Select
-      labelId="occupation-select-label"
-      value={formData.occupation}
-      onChange={(e) =>
-        setFormData((prev) => ({ ...prev, occupation: e.target.value }))
-      }
-      required
-    >
-      <MenuItem value="Estudiante">Estudiante</MenuItem>
-      <MenuItem value="Empleado">Empleado</MenuItem>
-      <MenuItem value="Independiente">Independiente</MenuItem>
-      <MenuItem value="Desempleado">Desempleado</MenuItem>
-      <MenuItem value="Empresario">Empresario</MenuItem>
-      <MenuItem value="Docente">Docente</MenuItem>
-      <MenuItem value="Ingeniero">Ingeniero</MenuItem>
-      <MenuItem value="Médico">Médico</MenuItem>
-      <MenuItem value="Abogado">Abogado</MenuItem>
-      <MenuItem value="Otro">Otro</MenuItem>
-    </Select>
-  </FormControl>
-</Box>
-
-
-<FormControl
-  fullWidth
-  sx={{
-    mt: 2,
-    backgroundColor: '#ffffff', // Fondo blanco
-    borderRadius: '8px', // Bordes redondeados
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-  }}
->
-  <InputLabel id="last-studies-select-label">Últimos Estudios</InputLabel>
-  <Select
-    labelId="last-studies-select-label"
-    value={formData.last_studies}
-    onChange={(e) =>
-      setFormData((prev) => ({ ...prev, last_studies: e.target.value }))
-    }
-    required
-  > 
-    <MenuItem value="Preescolar">Preescolar</MenuItem>
-    <MenuItem value="Primaria">Primaria</MenuItem>
-    <MenuItem value="Secundaria">Secundaria</MenuItem>
-    <MenuItem value="Preparatoria">Preparatoria</MenuItem>
-    <MenuItem value="Licenciatura">Licenciatura</MenuItem>
-    <MenuItem value="Maestría">Maestría</MenuItem>
-    <MenuItem value="Doctorado">Doctorado</MenuItem>
-  </Select>
-</FormControl>
-
-
-        <Box {...getRootAddressProofProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
-          <input {...getInputAddressProofProps()} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <FolderCopyIcon sx={{ fontSize: 80, color: '#ccc' }} />
-            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Comprobante de Domicilio)</Typography>
-            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
-            {addressProofName && <Typography variant="body2" color="textPrimary">Archivo subido: {addressProofName}</Typography>}
-          </Box>
-        </Box>
-
-        <Box {...getRootIdCardProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
-          <input {...getInputIdCardProps()} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <RecentActorsIcon sx={{ fontSize: 80, color: '#ccc' }} />
-            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Identificación)</Typography>
-            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
-            {idCardName && <Typography variant="body2" color="textPrimary">Archivo subido: {idCardName}</Typography>}
-          </Box>
-        </Box>
-
+       
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button variant="outlined">Cancelar</Button>
           <Button type="submit" variant="contained" color="primary">Guardar</Button>

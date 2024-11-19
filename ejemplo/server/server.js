@@ -206,7 +206,7 @@ app.post(
       tutor2_relationship,
       tutor2_phone,
       disability_type,
-      disability_description
+      disability_description,
     } = req.body;
 
     const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
@@ -222,7 +222,7 @@ app.post(
     const birthDate = new Date(birth_date);
     const currentDate = new Date();
     const age = currentDate.getFullYear() - birthDate.getFullYear();
-    const isMinor = (currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age))) ? age < 18 : age <= 18;
+    const isMinor = currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
 
     // Verificar si el folio ya existe
     const checkFolioQuery = 'SELECT COUNT(*) AS count FROM main_persona WHERE folio = ?';
@@ -267,7 +267,7 @@ app.post(
           idCard,
           area_id,
           isMinor ? 1 : 0,
-          disability_type ? 1 : 0 // Si hay tipo de discapacidad, se marca como 1
+          disability_type ? 1 : 0, // Si hay discapacidad, marcar como 1
         ],
         (err, result) => {
           if (err) {
@@ -275,13 +275,15 @@ app.post(
             return res.status(500).json({ error: 'Error saving to database' });
           }
 
+          const mainPersonaId = result.insertId;
+
           // Insertar en tutors si isMinor es 1
           if (isMinor) {
             const tutor1InsertQuery = `
               INSERT INTO tutors (name, relationship, phone, main_persona_id)
               VALUES (?, ?, ?, ?)
             `;
-            db.query(tutor1InsertQuery, [tutor1_name, tutor1_relationship, tutor1_phone, result.insertId], (err) => {
+            db.query(tutor1InsertQuery, [tutor1_name, tutor1_relationship, tutor1_phone, mainPersonaId], (err) => {
               if (err) {
                 console.error('Error saving first tutor:', err);
                 return res.status(500).json({ error: 'Error saving first tutor' });
@@ -292,7 +294,7 @@ app.post(
                   INSERT INTO tutors (name, relationship, phone, main_persona_id)
                   VALUES (?, ?, ?, ?)
                 `;
-                db.query(tutor2InsertQuery, [tutor2_name, tutor2_relationship, tutor2_phone, result.insertId], (err) => {
+                db.query(tutor2InsertQuery, [tutor2_name, tutor2_relationship, tutor2_phone, mainPersonaId], (err) => {
                   if (err) {
                     console.error('Error saving second tutor:', err);
                     return res.status(500).json({ error: 'Error saving second tutor' });
@@ -310,7 +312,7 @@ app.post(
             `;
             db.query(
               disabilityInsertQuery,
-              [result.insertId, disability_type, disability_description],
+              [mainPersonaId, disability_type, disability_description],
               (err) => {
                 if (err) {
                   console.error('Error saving disability:', err);
