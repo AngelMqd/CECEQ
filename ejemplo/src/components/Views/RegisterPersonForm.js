@@ -12,6 +12,7 @@ function RegisterPersonForm() {
   const [selectedAbbreviation, setSelectedAbbreviation] = useState('');
   const [lastFolioNumber, setLastFolioNumber] = useState(0);
   const [formData, setFormData] = useState({
+    
     folio: '',
     name: '',
     surname: '',
@@ -119,10 +120,16 @@ function RegisterPersonForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
-      // Validar que el primer tutor sea obligatorio
-  if (!formData.tutor1_name || !formData.tutor1_relationship || !formData.tutor1_phone) {
-    setNotification({ open: true, message: 'El primer tutor es obligatorio.', type: 'error' });
+    
+    if (formData.isDisabled) {
+      const formDataToSend = new FormData();
+      formDataToSend.append('disability_type', formData.disability_type || '');
+      formDataToSend.append('disability_description', formData.disability_description || '');
+    }
+    
+  // Verificar si es menor de edad y si el primer tutor es obligatorio
+  if (formData.isMinor && (!formData.tutor1_name || !formData.tutor1_relationship || !formData.tutor1_phone)) {
+    setNotification({ open: true, message: 'El primer tutor es obligatorio para menores de edad.', type: 'error' });
     return;
   }
 
@@ -559,7 +566,61 @@ function RegisterPersonForm() {
         <FormControlLabel
           control={<Checkbox checked={formData.foreign} onChange={() => setFormData({ ...formData, foreign: !formData.foreign })} />}
           label="Foráneo"
+          sx={{ mt: 1 }}
         />
+<FormControlLabel
+  control={
+    <Checkbox
+      checked={formData.isDisabled || false}
+      onChange={() =>
+        setFormData((prev) => ({ ...prev, isDisabled: !prev.isDisabled }))
+      }
+    />
+  }
+  label="¿Tiene alguna discapacidad?"
+  sx={{ mt: 1 }}
+/>
+{formData.isDisabled && (
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="h6" color="primary">
+      Información de la Discapacidad
+    </Typography>
+    <FormControl
+      fullWidth
+      sx={{
+        mt: 2,
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <InputLabel id="disability-type-label">Tipo de Discapacidad</InputLabel>
+      <Select
+        labelId="disability-type-label"
+        name="disability_type"
+        value={formData.disability_type || ''}
+        onChange={handleChange}
+        required
+      >
+        <MenuItem value="Visual">Visual</MenuItem>
+        <MenuItem value="Auditiva">Auditiva</MenuItem>
+        <MenuItem value="Motriz">Motriz</MenuItem>
+        <MenuItem value="Intelectual">Intelectual</MenuItem>
+        <MenuItem value="Otra">Otra</MenuItem>
+      </Select>
+    </FormControl>
+    <TextField
+      label="Descripción de la Discapacidad"
+      name="disability_description"
+      value={formData.disability_description || ''}
+      onChange={handleChange}
+      fullWidth
+      multiline
+      rows={3}
+      sx={{ mt: 2 }}
+    />
+  </Box>
+)}
 
 <Box
   sx={{

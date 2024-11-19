@@ -205,6 +205,8 @@ app.post(
       tutor2_name,
       tutor2_relationship,
       tutor2_phone,
+      disability_type,
+      disability_description
     } = req.body;
 
     const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
@@ -272,9 +274,11 @@ app.post(
             return res.status(500).json({ error: 'Error saving to database' });
           }
 
-          // Insertar en tutors si isMinor es 1
           if (isMinor) {
-            // Insertar el primer tutor (obligatorio)
+            if (!tutor1_name || !tutor1_relationship || !tutor1_phone) {
+              return res.status(400).json({ error: 'El primer tutor es obligatorio para menores de edad.' });
+            }
+          
             const tutor1InsertQuery = `
               INSERT INTO tutors (name, relationship, phone, main_persona_id)
               VALUES (?, ?, ?, ?)
@@ -284,8 +288,7 @@ app.post(
                 console.error('Error saving first tutor:', err);
                 return res.status(500).json({ error: 'Error saving first tutor' });
               }
-
-              // Insertar el segundo tutor (si se proporcionan datos)
+          
               if (tutor2_name && tutor2_relationship && tutor2_phone) {
                 const tutor2InsertQuery = `
                   INSERT INTO tutors (name, relationship, phone, main_persona_id)
@@ -296,15 +299,30 @@ app.post(
                     console.error('Error saving second tutor:', err);
                     return res.status(500).json({ error: 'Error saving second tutor' });
                   }
-                  res.json({ message: 'Person and tutors registered successfully' });
                 });
-              } else {
-                res.json({ message: 'Person and first tutor registered successfully' });
               }
             });
-          } else {
-            res.json({ message: 'Person registered successfully' });
           }
+
+          // Registrar discapacidad si aplica
+          if (disability_type && disability_description) {
+            const disabilityInsertQuery = `
+              INSERT INTO disabilities (main_persona_id, disability_type, description, created_at, updated_at)
+              VALUES (?, ?, ?, NOW(), NOW())
+            `;
+            db.query(
+              disabilityInsertQuery,
+              [result.insertId, disability_type, disability_description],
+              (err) => {
+                if (err) {
+                  console.error('Error saving disability:', err);
+                  return res.status(500).json({ error: 'Error saving disability' });
+                }
+              }
+            );
+          }
+
+          res.json({ message: 'Person, tutors, and disability (if applicable) registered successfully' });
         }
       );
     });
