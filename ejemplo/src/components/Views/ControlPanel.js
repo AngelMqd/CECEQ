@@ -1,19 +1,18 @@
-import React from 'react';
-import { Box, Heading } from '@chakra-ui/react';
-import CRUDForm from '../Crud/CRUDForm'; // Ajusta la ruta si es necesario
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Box, Text } from '@chakra-ui/react';
+import CRUDForm from '../Crud/CRUDForm';
 
-const ControlPanel = ({ addGroup }) => {
-  const navigate = useNavigate();
-
-  const handleCreateGroup = (groupName) => {
-    addGroup(groupName); // Agrega el grupo al estado global
-    navigate('/grupos'); // Redirige a la vista de grupos
-  };
+const ControlPanel = () => {
+  const [error, setError] = useState(null); // Estado para manejar errores
 
   return (
     <Box p={4}>
-      <CRUDForm addGroup={handleCreateGroup} /> {/* Pasa la función */}
+      {error && (
+        <Text color="red.500" mb={4}>
+          {error}
+        </Text>
+      )}
+      <CRUDForm />
     </Box>
   );
 };

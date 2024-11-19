@@ -16,7 +16,7 @@ app.use(express.json());
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'angel820',
+  password: 'Master12$',
   database: 'ceceq'
 });
 
@@ -633,6 +633,50 @@ app.get('/api/assistence/entradasSinSalida', (req, res) => {
       return res.status(500).json({ error: 'Error al obtener entradas sin salida' });
     }
     res.json(results);
+  });
+});
+
+
+
+
+
+
+
+// Endpoints
+app.get('/api/areas', (req, res) => {
+  const query = 'SELECT id, area_name, abbreviation FROM areas'; 
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error al obtener los grupos:', err);
+      res.status(500).json({ error: 'Error al obtener los grupos' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
+
+app.post('/api/areas', (req, res) => {
+  console.log('Datos recibidos en el backend:', req.body);
+
+  const { area_name, abbreviation } = req.body;
+
+  if (!area_name || !abbreviation) {
+    console.error('Validación fallida:', { area_name, abbreviation });
+    return res.status(400).json({ error: 'Nombre del grupo y abreviación son obligatorios' });
+  }
+
+  console.log('Validación exitosa:', { area_name, abbreviation });
+
+  const query = 'INSERT INTO areas (area_name, abbreviation) VALUES (?, ?)';
+  db.query(query, [area_name, abbreviation], (err, results) => {
+    if (err) {
+      console.error('Error al ejecutar el query:', err.sqlMessage || err.message);
+      return res.status(500).json({ error: err.sqlMessage || 'Error al crear el grupo' });
+    }
+    console.log('Grupo creado exitosamente:', results);
+    res.status(201).json({ message: 'Grupo creado con éxito', id: results.insertId });
   });
 });
 
