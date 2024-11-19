@@ -38,13 +38,26 @@ function RegisterPersonForm() {
   const [idCardName, setIdCardName] = useState('');
 
   const handleChange = (e) => {
-    if (e.target.name === 'phone') {
-      const regex = /^[0-9]*$/;
-      if (!regex.test(e.target.value)) {
+    const { name, value } = e.target; // Desestructura correctamente el evento
+
+    if (name === 'phone') {
+      const regex = /^[0-9]*$/; // Asegúrate de que solo números se permitan en el campo teléfono
+      if (!regex.test(value)) {
         return;
       }
     }
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  
+    setFormData((prev) => ({ ...prev, [name]: value })); // Actualiza dinámicamente el estado
+
+    if (name === 'birth_date') {
+      const birthDate = new Date(value);
+      const currentDate = new Date();
+      const age = currentDate.getFullYear() - birthDate.getFullYear();
+      const isMinor =
+        currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
+  
+      setFormData((prev) => ({ ...prev, isMinor }));
+    }
   };
 
   const onDropPhoto = (acceptedFiles) => {
@@ -106,27 +119,33 @@ function RegisterPersonForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+  
+      // Validar que el primer tutor sea obligatorio
+  if (!formData.tutor1_name || !formData.tutor1_relationship || !formData.tutor1_phone) {
+    setNotification({ open: true, message: 'El primer tutor es obligatorio.', type: 'error' });
+    return;
+  }
 
     if (!formData.name || !formData.surname || !formData.folio) {
       setNotification({ open: true, message: 'Folio, nombre y apellido son obligatorios.', type: 'error' });
       return;
     }
-
+  
     if (!photo) {
       setNotification({ open: true, message: 'La foto es obligatoria.', type: 'error' });
       return;
     }
-
+  
     if (!addressProof) {
       setNotification({ open: true, message: 'El comprobante de domicilio es obligatorio.', type: 'error' });
       return;
     }
-
+  
     if (!idCard) {
       setNotification({ open: true, message: 'La identificación es obligatoria.', type: 'error' });
       return;
     }
-
+  
     const formDataToSend = new FormData();
     formDataToSend.append('folio', formData.folio);
     formDataToSend.append('name', formData.name);
@@ -145,30 +164,46 @@ function RegisterPersonForm() {
       const photoName = `${formData.name}_${formData.surname}.jpg`;
       formDataToSend.append('photo', photo, photoName);
     }
-
     if (addressProof) {
       const addressProofName = `${formData.name}_${formData.surname}_comprobante_domicilio.pdf`;
       formDataToSend.append('address_proof', addressProof, addressProofName);
     }
-
     if (idCard) {
       const idCardName = `${formData.name}_${formData.surname}_identificacion.pdf`;
       formDataToSend.append('id_card', idCard, idCardName);
     }
+    
+  
+    
+  // Datos del primer tutor (obligatorios)
+  formDataToSend.append('tutor1_name', formData.tutor1_name);
+  formDataToSend.append('tutor1_relationship', formData.tutor1_relationship);
+  formDataToSend.append('tutor1_phone', formData.tutor1_phone);
 
-    try {
-      await axios.post('http://localhost:3001/api/crud', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-    
-      setNotification({
-        open: true,
-        message: '¡Perfil guardado con éxito!',
-        type: 'success',
-      });
-    } catch (error) {
-      console.error('Error al registrar persona:', error);
-    
+  // Datos del segundo tutor (opcional)
+  if (formData.tutor2_name && formData.tutor2_relationship && formData.tutor2_phone) {
+    formDataToSend.append('tutor2_name', formData.tutor2_name);
+    formDataToSend.append('tutor2_relationship', formData.tutor2_relationship);
+    formDataToSend.append('tutor2_phone', formData.tutor2_phone);
+  }
+    // Resto del envío
+  try {
+    await axios.post('http://localhost:3001/api/crud', formDataToSend, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    setNotification({
+      open: true,
+      message: '¡Perfil guardado con éxito!',
+      type: 'success',
+    });
+  } catch (error) {
+    console.error('Error al registrar persona:', error);
+    setNotification({
+      open: true,
+      message: 'Error al guardar el perfil. Por favor, intenta nuevamente.',
+      type: 'error',
+    });
+  
       // Verificar si el error es por un folio duplicado
       if (error.response && error.response.data && error.response.data.error === 'The folio already exists.') {
         setNotification({
@@ -185,7 +220,7 @@ function RegisterPersonForm() {
       }
     }
   };
-
+  
   useEffect(() => {
     axios
       .get('http://localhost:3001/api/areas')
@@ -311,6 +346,82 @@ function RegisterPersonForm() {
           InputLabelProps={{ shrink: true }}
           sx={{ mt: 2 }}
         />
+{formData.isMinor && (
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="h6" color="primary">
+      Información del Tutor
+    </Typography>
+    {/* Primer Tutor (obligatorio) */}
+    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+      <TextField
+        label="Nombre del Primer Tutor"
+        name="tutor1_name"
+        value={formData.tutor1_name || ''}
+        onChange={handleChange}
+        fullWidth
+        required
+      />
+      <TextField
+        label="Parentesco"
+        name="tutor1_relationship"
+        value={formData.tutor1_relationship || ''}
+        onChange={handleChange}
+        fullWidth
+        required
+      />
+    </Box>
+    <TextField
+      label="Teléfono del Primer Tutor"
+      name="tutor1_phone"
+      value={formData.tutor1_phone || ''}
+      onChange={(e) => {
+        const regex = /^[0-9]*$/;
+        if (regex.test(e.target.value)) {
+          handleChange(e);
+        }
+      }}
+      fullWidth
+      required
+      sx={{ mt: 2 }}
+    />
+
+    {/* Segundo Tutor (opcional) */}
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="h6" color="secondary">
+        Información del Segundo Tutor (Opcional)
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+        <TextField
+          label="Nombre del Segundo Tutor"
+          name="tutor2_name"
+          value={formData.tutor2_name || ''}
+          onChange={handleChange}
+          fullWidth
+        />
+        <TextField
+          label="Parentesco"
+          name="tutor2_relationship"
+          value={formData.tutor2_relationship || ''}
+          onChange={handleChange}
+          fullWidth
+        />
+      </Box>
+      <TextField
+        label="Teléfono del Segundo Tutor"
+        name="tutor2_phone"
+        value={formData.tutor2_phone || ''}
+        onChange={(e) => {
+          const regex = /^[0-9]*$/;
+          if (regex.test(e.target.value)) {
+            handleChange(e);
+          }
+        }}
+        fullWidth
+        sx={{ mt: 2 }}
+      />
+    </Box>
+  </Box>
+)}
 
         <Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
           <input {...getInputPhotoProps()} />
