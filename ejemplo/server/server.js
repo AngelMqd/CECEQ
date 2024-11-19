@@ -4,19 +4,16 @@ const mysql = require('mysql2');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const bcrypt = require('bcrypt'); // Asegúrate de instalar bcrypt usando npm
+const bcrypt = require('bcrypt'); 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-
-// Configuración de la conexión a la base de datos
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'Master12$',
+  password: 'angel820',
   database: 'ceceq'
 });
 
@@ -39,7 +36,6 @@ db.connect((err) => {
 
 
 
-// Ruta de autenticación (login)
 app.post('/api/login', (req, res) => {
   const { usuario, password } = req.body;
   const query = 'SELECT * FROM auth_user WHERE username = ?';
@@ -203,9 +199,12 @@ app.post(
       occupation,
       last_studies,
       area_id,
-      tutor_name,
-      tutor_relationship,
-      tutor_phone,
+      tutor1_name,
+      tutor1_relationship,
+      tutor1_phone,
+      tutor2_name,
+      tutor2_relationship,
+      tutor2_phone,
     } = req.body;
 
     const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
@@ -274,23 +273,35 @@ app.post(
           }
 
           // Insertar en tutors si isMinor es 1
-          if (isMinor && tutor_name && tutor_relationship && tutor_phone) {
-            const tutorInsertQuery = `
+          if (isMinor) {
+            // Insertar el primer tutor (obligatorio)
+            const tutor1InsertQuery = `
               INSERT INTO tutors (name, relationship, phone, main_persona_id)
               VALUES (?, ?, ?, ?)
             `;
-
-            db.query(
-              tutorInsertQuery,
-              [tutor_name, tutor_relationship, tutor_phone, result.insertId],
-              (err) => {
-                if (err) {
-                  console.error('Error saving tutor:', err);
-                  return res.status(500).json({ error: 'Error saving tutor' });
-                }
-                res.json({ message: 'Person and tutor registered successfully' });
+            db.query(tutor1InsertQuery, [tutor1_name, tutor1_relationship, tutor1_phone, result.insertId], (err) => {
+              if (err) {
+                console.error('Error saving first tutor:', err);
+                return res.status(500).json({ error: 'Error saving first tutor' });
               }
-            );
+
+              // Insertar el segundo tutor (si se proporcionan datos)
+              if (tutor2_name && tutor2_relationship && tutor2_phone) {
+                const tutor2InsertQuery = `
+                  INSERT INTO tutors (name, relationship, phone, main_persona_id)
+                  VALUES (?, ?, ?, ?)
+                `;
+                db.query(tutor2InsertQuery, [tutor2_name, tutor2_relationship, tutor2_phone, result.insertId], (err) => {
+                  if (err) {
+                    console.error('Error saving second tutor:', err);
+                    return res.status(500).json({ error: 'Error saving second tutor' });
+                  }
+                  res.json({ message: 'Person and tutors registered successfully' });
+                });
+              } else {
+                res.json({ message: 'Person and first tutor registered successfully' });
+              }
+            });
           } else {
             res.json({ message: 'Person registered successfully' });
           }
@@ -299,6 +310,7 @@ app.post(
     });
   }
 );
+
 
 
 

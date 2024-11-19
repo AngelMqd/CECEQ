@@ -120,6 +120,12 @@ function RegisterPersonForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+      // Validar que el primer tutor sea obligatorio
+  if (!formData.tutor1_name || !formData.tutor1_relationship || !formData.tutor1_phone) {
+    setNotification({ open: true, message: 'El primer tutor es obligatorio.', type: 'error' });
+    return;
+  }
+
     if (!formData.name || !formData.surname || !formData.folio) {
       setNotification({ open: true, message: 'Folio, nombre y apellido son obligatorios.', type: 'error' });
       return;
@@ -166,26 +172,37 @@ function RegisterPersonForm() {
       const idCardName = `${formData.name}_${formData.surname}_identificacion.pdf`;
       formDataToSend.append('id_card', idCard, idCardName);
     }
+    
   
-    // Información del tutor si es menor de edad
-    if (formData.isMinor) {
-      formDataToSend.append('tutor_name', formData.tutor_name);
-      formDataToSend.append('tutor_relationship', formData.tutor_relationship);
-      formDataToSend.append('tutor_phone', formData.tutor_phone);
-    }
-  
-    try {
-      await axios.post('http://localhost:3001/api/crud', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-  
-      setNotification({
-        open: true,
-        message: '¡Perfil guardado con éxito!',
-        type: 'success',
-      });
-    } catch (error) {
-      console.error('Error al registrar persona:', error);
+    
+  // Datos del primer tutor (obligatorios)
+  formDataToSend.append('tutor1_name', formData.tutor1_name);
+  formDataToSend.append('tutor1_relationship', formData.tutor1_relationship);
+  formDataToSend.append('tutor1_phone', formData.tutor1_phone);
+
+  // Datos del segundo tutor (opcional)
+  if (formData.tutor2_name && formData.tutor2_relationship && formData.tutor2_phone) {
+    formDataToSend.append('tutor2_name', formData.tutor2_name);
+    formDataToSend.append('tutor2_relationship', formData.tutor2_relationship);
+    formDataToSend.append('tutor2_phone', formData.tutor2_phone);
+  }
+    // Resto del envío
+  try {
+    await axios.post('http://localhost:3001/api/crud', formDataToSend, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    setNotification({
+      open: true,
+      message: '¡Perfil guardado con éxito!',
+      type: 'success',
+    });
+  } catch (error) {
+    console.error('Error al registrar persona:', error);
+    setNotification({
+      open: true,
+      message: 'Error al guardar el perfil. Por favor, intenta nuevamente.',
+      type: 'error',
+    });
   
       // Verificar si el error es por un folio duplicado
       if (error.response && error.response.data && error.response.data.error === 'The folio already exists.') {
@@ -334,28 +351,29 @@ function RegisterPersonForm() {
     <Typography variant="h6" color="primary">
       Información del Tutor
     </Typography>
+    {/* Primer Tutor (obligatorio) */}
     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
       <TextField
-        label="Nombre del Tutor"
-        name="tutor_name"
-        value={formData.tutor_name || ''}
+        label="Nombre del Primer Tutor"
+        name="tutor1_name"
+        value={formData.tutor1_name || ''}
         onChange={handleChange}
         fullWidth
         required
       />
       <TextField
         label="Parentesco"
-        name="tutor_relationship"
-        value={formData.tutor_relationship || ''}
+        name="tutor1_relationship"
+        value={formData.tutor1_relationship || ''}
         onChange={handleChange}
         fullWidth
         required
       />
     </Box>
     <TextField
-      label="Teléfono del Tutor"
-      name="tutor_phone"
-      value={formData.tutor_phone || ''}
+      label="Teléfono del Primer Tutor"
+      name="tutor1_phone"
+      value={formData.tutor1_phone || ''}
       onChange={(e) => {
         const regex = /^[0-9]*$/;
         if (regex.test(e.target.value)) {
@@ -366,6 +384,42 @@ function RegisterPersonForm() {
       required
       sx={{ mt: 2 }}
     />
+
+    {/* Segundo Tutor (opcional) */}
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="h6" color="secondary">
+        Información del Segundo Tutor (Opcional)
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+        <TextField
+          label="Nombre del Segundo Tutor"
+          name="tutor2_name"
+          value={formData.tutor2_name || ''}
+          onChange={handleChange}
+          fullWidth
+        />
+        <TextField
+          label="Parentesco"
+          name="tutor2_relationship"
+          value={formData.tutor2_relationship || ''}
+          onChange={handleChange}
+          fullWidth
+        />
+      </Box>
+      <TextField
+        label="Teléfono del Segundo Tutor"
+        name="tutor2_phone"
+        value={formData.tutor2_phone || ''}
+        onChange={(e) => {
+          const regex = /^[0-9]*$/;
+          if (regex.test(e.target.value)) {
+            handleChange(e);
+          }
+        }}
+        fullWidth
+        sx={{ mt: 2 }}
+      />
+    </Box>
   </Box>
 )}
 
