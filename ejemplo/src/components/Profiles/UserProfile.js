@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, Link, Divider } from '@mui/material';
+import { Box, Button, Typography, Divider, Avatar, Grid, Link } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import EditIcon from '@mui/icons-material/Edit';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import HistoryIcon from '@mui/icons-material/History';
-import { Heading } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
@@ -14,12 +14,13 @@ function UserProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`http://localhost:3001/api/personas/${id}`)
-      .then(response => {
+    axios
+      .get(`http://localhost:3001/api/personas/${id}`)
+      .then((response) => {
         setPerson(response.data);
         setLoading(false);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('Error al obtener el perfil:', error);
         setLoading(false);
       });
@@ -71,115 +72,215 @@ function UserProfile() {
   }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: '#FFF', borderRadius: '6px', boxShadow: 3, maxWidth: '800px', margin: '0 auto' }}>
-      <Heading size="lg" mb={5}>Perfil de Usuario</Heading>
-
-      {/* Información básica */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Información Básica</Typography>
-        <Divider />
-        <Typography variant="body1"><strong>Folio:</strong> {person.folio}</Typography>
-        <Typography variant="body1"><strong>Nombre:</strong> {person.name} {person.surname}</Typography>
-        <Typography variant="body1"><strong>Fecha de Nacimiento:</strong> {new Date(person.birth_date).toLocaleDateString()}</Typography>
-        <Typography variant="body1"><strong>Género:</strong> {person.gender}</Typography>
-        <Typography variant="body1"><strong>Estado Civil:</strong> {person.civil_status}</Typography>
-      </Box>
-
-      {/* Información de contacto */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Información de Contacto</Typography>
-        <Divider />
-        <Typography variant="body1"><strong>Teléfono:</strong> {person.phone}</Typography>
-        <Typography variant="body1"><strong>Dirección:</strong> {person.address}, {person.estate}</Typography>
-        <Typography variant="body1"><strong>Foráneo:</strong> {person.foreign ? 'Sí' : 'No'}</Typography>
-      </Box>
-
-      {/* Información académica */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Información Académica</Typography>
-        <Divider />
-        <Typography variant="body1"><strong>Últimos Estudios:</strong> {person.last_studies}</Typography>
-        <Typography variant="body1"><strong>Ocupación:</strong> {person.occupation}</Typography>
-      </Box>
-
-      {/* Estado */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Estado</Typography>
-        <Divider />
-        {getStatusBadge(person.status)}
-      </Box>
-
-      {/* Archivos PDF subidos */}
-      <Box mt={4}>
-        <Typography variant="h6" gutterBottom>Documentos</Typography>
-        <Divider />
-
-        {/* Comprobante de domicilio */}
-        {person.address_proof ? (
-          <Box mt={2}>
-            <Typography variant="body1">Comprobante de Domicilio:</Typography>
-            <Link 
-              href={`data:application/pdf;base64,${person.address_proof}`} 
-              target="_blank" 
-              download="Comprobante_Domicilio.pdf"
-              sx={{ 
-                textDecoration: 'none',
-                color: '#1976d2',
-                '&:hover': { textDecoration: 'underline' }
-              }}
-            >
-              Descargar Comprobante
-            </Link>
+    <Box
+      sx={{
+        p: 4,
+        backgroundColor: '#FFF',
+        borderRadius: '6px',
+        boxShadow: 3,
+        maxWidth: '900px',
+        margin: '0 auto',
+      }}
+    >
+      <Grid container spacing={3}>
+        {/* Foto de Usuario */}
+        <Grid item xs={12} md={4}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: 2,
+              backgroundColor: '#f5f5f5',
+              borderRadius: '8px',
+              boxShadow: 1,
+            }}
+          >
+            <Avatar
+              src={person.photo ? `data:image/jpeg;base64,${person.photo}` : null}
+              alt="Foto de Usuario"
+              sx={{ width: 120, height: 120, marginBottom: 2 }}
+            />
+            <Typography variant="h6">{person.name} {person.surname}</Typography>
+            {getStatusBadge(person.status)}
           </Box>
-        ) : (
-          <Typography variant="body2" color="textSecondary">No hay comprobante de domicilio disponible</Typography>
-        )}
+        </Grid>
 
-        {/* Identificación */}
-        {person.id_card ? (
-          <Box mt={2}>
-            <Typography variant="body1">Identificación:</Typography>
-            <Link 
-              href={`data:application/pdf;base64,${person.id_card}`} 
-              target="_blank" 
-              download="Identificacion.pdf"
-              sx={{ 
-                textDecoration: 'none',
-                color: '#1976d2',
-                '&:hover': { textDecoration: 'underline' }
-              }}
-            >
-              Descargar Identificación
-            </Link>
+        {/* Información Básica */}
+        <Grid item xs={12} md={8}>
+          <Box
+            sx={{
+              backgroundColor: '#f5f5f5',
+              padding: 2,
+              borderRadius: '8px',
+              boxShadow: 1,
+            }}
+          >
+            <Typography variant="h6" gutterBottom>Información Básica</Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="body1"><strong>Folio:</strong> {person.folio}</Typography>
+            <Typography variant="body1"><strong>Fecha de Nacimiento:</strong> {new Date(person.birth_date).toLocaleDateString()}</Typography>
+            <Typography variant="body1"><strong>Género:</strong> {person.gender}</Typography>
+            <Typography variant="body1"><strong>Estado Civil:</strong> {person.civil_status}</Typography>
           </Box>
-        ) : (
-          <Typography variant="body2" color="textSecondary">No hay identificación disponible</Typography>
-        )}
-      </Box>
+        </Grid>
 
-      {/* Botones de acción */}
-      <Box mt={5} textAlign="right">
-        <Button variant="outlined" color="error" sx={{ textTransform: 'none' }} startIcon={<LockIcon />}>
-          Bloquear
-        </Button>
-        <Button variant="outlined" sx={{ textTransform: 'none', ml: 2 }} startIcon={<EditIcon />} onClick={handleEdit}>
-          Editar Perfil
-        </Button>
-        <Button
-          variant="outlined"
+        {/* Información de Contacto */}
+        <Grid item xs={12}>
+          <Box
+            sx={{
+              backgroundColor: '#f5f5f5',
+              padding: 2,
+              borderRadius: '8px',
+              boxShadow: 1,
+            }}
+          >
+            <Typography variant="h6" gutterBottom>Información de Contacto</Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="body1"><strong>Teléfono:</strong> {person.phone}</Typography>
+            <Typography variant="body1"><strong>Dirección:</strong> {person.address}, {person.estate}</Typography>
+            <Typography variant="body1"><strong>Foráneo:</strong> {person.foreign ? 'Sí' : 'No'}</Typography>
+          </Box>
+        </Grid>
+
+        {/* Información Académica */}
+        <Grid item xs={12}>
+          <Box
+            sx={{
+              backgroundColor: '#f5f5f5',
+              padding: 2,
+              borderRadius: '8px',
+              boxShadow: 1,
+            }}
+          >
+            <Typography variant="h6" gutterBottom>Información Académica</Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="body1"><strong>Últimos Estudios:</strong> {person.last_studies}</Typography>
+            <Typography variant="body1"><strong>Ocupación:</strong> {person.occupation}</Typography>
+          </Box>
+        </Grid>
+
+{/* Archivos PDF Subidos */}
+<Grid item xs={12}>
+  <Box
+    sx={{
+      backgroundColor: '#f5f5f5',
+      padding: 2,
+      borderRadius: '8px',
+      boxShadow: 1,
+    }}
+  >
+    <Typography variant="h6" gutterBottom>Documentos</Typography>
+    <Divider sx={{ mb: 2 }} />
+    <Box sx={{ border: '1px solid #e0e0e0', borderRadius: '8px', p: 2 }}>
+      {person.address_proof ? (
+        <Box
           sx={{
-            textTransform: 'none',
-            ml: 2,
-            color: '#006400',
-            borderColor: '#006400',
-            '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' },
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2,
           }}
-          startIcon={<HistoryIcon />}
-          onClick={handleHistory}
         >
-          Historial de Cambios
-        </Button>
-      </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AttachFileIcon sx={{ color: '#767676' }} />
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              Comprobante de Domicilio.pdf
+            </Typography>
+            <Typography variant="body2" sx={{ marginLeft: '8px', color: '#767676' }}>
+              {`${(person.address_proof_size / (1024 * 1024)).toFixed(1)} MB`}
+            </Typography>
+          </Box>
+          <Link
+            href={`data:application/pdf;base64,${person.address_proof}`}
+            target="_blank"
+            download="Comprobante_Domicilio.pdf"
+            sx={{
+              color: '#4a90e2',
+              fontWeight: 'bold',
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' },
+            }}
+          >
+            Descargar
+          </Link>
+        </Box>
+      ) : (
+        <Typography variant="body2" color="textSecondary">
+          Comprobante de Domicilio no disponible
+        </Typography>
+      )}
+
+      {person.id_card ? (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AttachFileIcon sx={{ color: '#767676' }} />
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              Identificación.pdf
+            </Typography>
+            <Typography variant="body2" sx={{ marginLeft: '8px', color: '#767676' }}>
+              {`${(person.id_card_size / (1024 * 1024)).toFixed(1)} MB`}
+            </Typography>
+          </Box>
+          <Link
+            href={`data:application/pdf;base64,${person.id_card}`}
+            target="_blank"
+            download="Identificacion.pdf"
+            sx={{
+              color: '#4a90e2',
+              fontWeight: 'bold',
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' },
+            }}
+          >
+            Descargar
+          </Link>
+        </Box>
+      ) : (
+        <Typography variant="body2" color="textSecondary">
+          Identificación no disponible
+        </Typography>
+      )}
+    </Box>
+  </Box>
+</Grid>
+
+
+
+        {/* Botones de Acción */}
+        <Grid item xs={12}>
+          <Box sx={{ textAlign: 'right' }}>
+            <Button variant="outlined" color="error" sx={{ textTransform: 'none' }} startIcon={<LockIcon />}>
+              Bloquear
+            </Button>
+            <Button variant="outlined" sx={{ textTransform: 'none', ml: 2 }} startIcon={<EditIcon />} onClick={handleEdit}>
+              Editar Perfil
+            </Button>
+            <Button
+              variant="outlined"
+              sx={{
+                textTransform: 'none',
+                ml: 2,
+                color: '#006400',
+                borderColor: '#006400',
+                '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' },
+              }}
+              startIcon={<HistoryIcon />}
+              onClick={handleHistory}
+            >
+              Historial de Cambios
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

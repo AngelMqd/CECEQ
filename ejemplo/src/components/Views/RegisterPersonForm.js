@@ -38,13 +38,26 @@ function RegisterPersonForm() {
   const [idCardName, setIdCardName] = useState('');
 
   const handleChange = (e) => {
-    if (e.target.name === 'phone') {
-      const regex = /^[0-9]*$/;
-      if (!regex.test(e.target.value)) {
+    const { name, value } = e.target; // Desestructura correctamente el evento
+
+    if (name === 'phone') {
+      const regex = /^[0-9]*$/; // Asegúrate de que solo números se permitan en el campo teléfono
+      if (!regex.test(value)) {
         return;
       }
     }
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  
+    setFormData((prev) => ({ ...prev, [name]: value })); // Actualiza dinámicamente el estado
+
+    if (name === 'birth_date') {
+      const birthDate = new Date(value);
+      const currentDate = new Date();
+      const age = currentDate.getFullYear() - birthDate.getFullYear();
+      const isMinor =
+        currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
+  
+      setFormData((prev) => ({ ...prev, isMinor }));
+    }
   };
 
   const onDropPhoto = (acceptedFiles) => {
@@ -106,27 +119,27 @@ function RegisterPersonForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!formData.name || !formData.surname || !formData.folio) {
       setNotification({ open: true, message: 'Folio, nombre y apellido son obligatorios.', type: 'error' });
       return;
     }
-
+  
     if (!photo) {
       setNotification({ open: true, message: 'La foto es obligatoria.', type: 'error' });
       return;
     }
-
+  
     if (!addressProof) {
       setNotification({ open: true, message: 'El comprobante de domicilio es obligatorio.', type: 'error' });
       return;
     }
-
+  
     if (!idCard) {
       setNotification({ open: true, message: 'La identificación es obligatoria.', type: 'error' });
       return;
     }
-
+  
     const formDataToSend = new FormData();
     formDataToSend.append('folio', formData.folio);
     formDataToSend.append('name', formData.name);
@@ -145,22 +158,27 @@ function RegisterPersonForm() {
       const photoName = `${formData.name}_${formData.surname}.jpg`;
       formDataToSend.append('photo', photo, photoName);
     }
-
     if (addressProof) {
       const addressProofName = `${formData.name}_${formData.surname}_comprobante_domicilio.pdf`;
       formDataToSend.append('address_proof', addressProof, addressProofName);
     }
-
     if (idCard) {
       const idCardName = `${formData.name}_${formData.surname}_identificacion.pdf`;
       formDataToSend.append('id_card', idCard, idCardName);
     }
-
+  
+    // Información del tutor si es menor de edad
+    if (formData.isMinor) {
+      formDataToSend.append('tutor_name', formData.tutor_name);
+      formDataToSend.append('tutor_relationship', formData.tutor_relationship);
+      formDataToSend.append('tutor_phone', formData.tutor_phone);
+    }
+  
     try {
       await axios.post('http://localhost:3001/api/crud', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-    
+  
       setNotification({
         open: true,
         message: '¡Perfil guardado con éxito!',
@@ -168,7 +186,7 @@ function RegisterPersonForm() {
       });
     } catch (error) {
       console.error('Error al registrar persona:', error);
-    
+  
       // Verificar si el error es por un folio duplicado
       if (error.response && error.response.data && error.response.data.error === 'The folio already exists.') {
         setNotification({
@@ -185,7 +203,7 @@ function RegisterPersonForm() {
       }
     }
   };
-
+  
   useEffect(() => {
     axios
       .get('http://localhost:3001/api/areas')
@@ -311,6 +329,45 @@ function RegisterPersonForm() {
           InputLabelProps={{ shrink: true }}
           sx={{ mt: 2 }}
         />
+{formData.isMinor && (
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="h6" color="primary">
+      Información del Tutor
+    </Typography>
+    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+      <TextField
+        label="Nombre del Tutor"
+        name="tutor_name"
+        value={formData.tutor_name || ''}
+        onChange={handleChange}
+        fullWidth
+        required
+      />
+      <TextField
+        label="Parentesco"
+        name="tutor_relationship"
+        value={formData.tutor_relationship || ''}
+        onChange={handleChange}
+        fullWidth
+        required
+      />
+    </Box>
+    <TextField
+      label="Teléfono del Tutor"
+      name="tutor_phone"
+      value={formData.tutor_phone || ''}
+      onChange={(e) => {
+        const regex = /^[0-9]*$/;
+        if (regex.test(e.target.value)) {
+          handleChange(e);
+        }
+      }}
+      fullWidth
+      required
+      sx={{ mt: 2 }}
+    />
+  </Box>
+)}
 
         <Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
           <input {...getInputPhotoProps()} />
