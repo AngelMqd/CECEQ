@@ -243,8 +243,8 @@ app.post(
         INSERT INTO main_persona (
           folio, name, surname, birth_date, gender, civil_status, address, estate,
           \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card, 
-          created_at, updated_at, areas_id, status, is_minor
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0, ?)
+          created_at, updated_at, areas_id, status, is_minor, is_disabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0, ?, ?)
       `;
 
       db.query(
@@ -267,6 +267,7 @@ app.post(
           idCard,
           area_id,
           isMinor ? 1 : 0,
+          disability_type ? 1 : 0 // Si hay tipo de discapacidad, se marca como 1
         ],
         (err, result) => {
           if (err) {
@@ -274,11 +275,8 @@ app.post(
             return res.status(500).json({ error: 'Error saving to database' });
           }
 
+          // Insertar en tutors si isMinor es 1
           if (isMinor) {
-            if (!tutor1_name || !tutor1_relationship || !tutor1_phone) {
-              return res.status(400).json({ error: 'El primer tutor es obligatorio para menores de edad.' });
-            }
-          
             const tutor1InsertQuery = `
               INSERT INTO tutors (name, relationship, phone, main_persona_id)
               VALUES (?, ?, ?, ?)
@@ -288,7 +286,7 @@ app.post(
                 console.error('Error saving first tutor:', err);
                 return res.status(500).json({ error: 'Error saving first tutor' });
               }
-          
+
               if (tutor2_name && tutor2_relationship && tutor2_phone) {
                 const tutor2InsertQuery = `
                   INSERT INTO tutors (name, relationship, phone, main_persona_id)

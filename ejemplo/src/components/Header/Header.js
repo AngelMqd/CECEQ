@@ -17,7 +17,6 @@ import {
 } from '@chakra-ui/react';
 import {
   ExitToApp,
-  Tune,
   Search,
   Settings,
   Notifications,
@@ -32,7 +31,7 @@ import { useBreakpointValue } from '@chakra-ui/react';
 
 
 const Header = ({ toggleSidebar, onLogout }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Manejo del modal de notificaciones
+  const { onOpen } = useDisclosure(); // Manejo del modal de notificaciones
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
