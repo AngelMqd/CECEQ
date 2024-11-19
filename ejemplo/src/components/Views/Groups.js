@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Spinner, Text } from '@chakra-ui/react';
-import GroupsTable from '../GroupsTable/GroupsTable'; // Asegúrate de importar correctamente
+import GroupsTable from '../GroupsTable/GroupsTable';
 import axios from 'axios';
 
 const Groups = () => {
@@ -8,12 +8,9 @@ const Groups = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Función para cargar los datos
   const fetchGroups = async () => {
     try {
-      console.log('Intentando cargar grupos...');
       const response = await axios.get('http://localhost:3001/api/areas');
-      console.log('Grupos cargados:', response.data);
       setGroups(response.data);
       setError(null);
     } catch (err) {
@@ -23,10 +20,9 @@ const Groups = () => {
       setLoading(false);
     }
   };
-  
 
   useEffect(() => {
-    fetchGroups(); // Carga los datos al montar el componente
+    fetchGroups();
   }, []);
 
   return (
@@ -41,7 +37,7 @@ const Groups = () => {
       ) : error ? (
         <Text color="red.500">{error}</Text>
       ) : (
-        <GroupsTable groups={groups} /> // Renderiza la tabla con los datos
+        <GroupsTable groups={groups} setGroups={setGroups} />
       )}
     </Box>
   );

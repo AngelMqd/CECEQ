@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Table, Thead, Tbody, Tr, Th, Td, Button, Input, Flex, Icon } from '@chakra-ui/react';
+import { Box, Text, Button, Input, Flex, Icon, VStack } from '@chakra-ui/react';
 import { FaEdit, FaSave, FaTrash } from 'react-icons/fa';
 
 const GroupsTable = ({ groups, setGroups }) => {
@@ -13,39 +13,44 @@ const GroupsTable = ({ groups, setGroups }) => {
     setEditedAbbreviation(group.abbreviation);
   };
 
-  const handleSaveClick = (id) => {
-    // Actualiza los datos en la API o en el estado local
-    const updatedGroups = groups.map((group) =>
-      group.id === id
-        ? { ...group, area_name: editedGroupName, abbreviation: editedAbbreviation }
-        : group
-    );
-    setGroups(updatedGroups);
-    setEditingGroup(null);
+  const handleSaveClick = async (id) => {
+    try {
+      const updatedGroups = groups.map((group) =>
+        group.id === id
+          ? { ...group, area_name: editedGroupName, abbreviation: editedAbbreviation }
+          : group
+      );
+      setGroups(updatedGroups);
+      setEditingGroup(null);
+      alert('Grupo actualizado con éxito');
+    } catch (error) {
+      console.error('Error al actualizar el grupo:', error);
+      alert('Hubo un error al actualizar el grupo');
+    }
   };
 
   const handleDeleteClick = (id) => {
-    // Elimina el grupo de la lista
     const updatedGroups = groups.filter((group) => group.id !== id);
     setGroups(updatedGroups);
     alert('Grupo eliminado con éxito');
   };
 
   return (
-    <Box>
-      <Table variant="striped" colorScheme="purple" mt={4}>
-        <Thead>
-          <Tr>
-            <Th>Nombre del Grupo</Th>
-            <Th>Abreviación</Th>
-            <Th>Acciones</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {groups.map((group) => (
-            <Tr key={group.id}>
-              <Td>
-                {editingGroup === group.id ? (
+    <VStack spacing={4} align="stretch" p={4}>
+      {groups.map((group) => (
+        <Box
+          key={group.id}
+          bg="white"
+          borderRadius="md"
+          boxShadow="md"
+          p={4}
+          border="1px solid"
+          borderColor="gray.200"
+        >
+          <Flex justify="space-between" align="center">
+            <Box>
+              <Text fontSize="lg" fontWeight="bold">
+                Nombre del Grupo: {editingGroup === group.id ? (
                   <Input
                     value={editedGroupName}
                     onChange={(e) => setEditedGroupName(e.target.value)}
@@ -54,9 +59,9 @@ const GroupsTable = ({ groups, setGroups }) => {
                 ) : (
                   group.area_name
                 )}
-              </Td>
-              <Td>
-                {editingGroup === group.id ? (
+              </Text>
+              <Text fontSize="md" color="gray.500">
+                Abreviación: {editingGroup === group.id ? (
                   <Input
                     value={editedAbbreviation}
                     onChange={(e) => setEditedAbbreviation(e.target.value)}
@@ -65,43 +70,45 @@ const GroupsTable = ({ groups, setGroups }) => {
                 ) : (
                   group.abbreviation
                 )}
-              </Td>
-              <Td>
-                {editingGroup === group.id ? (
-                  <Button
-                    size="sm"
-                    colorScheme="green"
-                    mr={2}
-                    onClick={() => handleSaveClick(group.id)}
-                  >
-                    <Icon as={FaSave} mr={2} />
-                    Guardar
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    colorScheme="blue"
-                    mr={2}
-                    onClick={() => handleEditClick(group)}
-                  >
-                    <Icon as={FaEdit} mr={2} />
-                    Editar
-                  </Button>
-                )}
+              </Text>
+            </Box>
+            <Flex>
+              {editingGroup === group.id ? (
                 <Button
                   size="sm"
-                  colorScheme="red"
-                  onClick={() => handleDeleteClick(group.id)}
+                  colorScheme="green"
+                  mr={2}
+                  onClick={() => handleSaveClick(group.id)}
                 >
-                  <Icon as={FaTrash} mr={2} />
-                  Eliminar
+                  <Icon as={FaSave} color="white" mr={2} />
+                  Guardar
                 </Button>
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </Box>
+              ) : (
+                <Button
+                  size="sm"
+                  bg="transparent"
+                  _hover={{ bg: 'purple.100' }}
+                  mr={2}
+                  onClick={() => handleEditClick(group)}
+                >
+                  <Icon as={FaEdit} color="purple.600" mr={2} />
+                  Editar
+                </Button>
+              )}
+              <Button
+                size="sm"
+                bg="transparent"
+                _hover={{ bg: 'red.100' }}
+                onClick={() => handleDeleteClick(group.id)}
+              >
+                <Icon as={FaTrash} color="red.600" mr={2} />
+                Eliminar
+              </Button>
+            </Flex>
+          </Flex>
+        </Box>
+      ))}
+    </VStack>
   );
 };
 

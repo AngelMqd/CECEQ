@@ -577,8 +577,6 @@ app.get('/api/areas', (req, res) => {
   });
 });
 
-
-
 app.post('/api/areas', (req, res) => {
   console.log('Datos recibidos en el backend:', req.body);
 
@@ -602,6 +600,44 @@ app.post('/api/areas', (req, res) => {
   });
 });
 
+// Actualizar un grupo
+app.put('/api/areas/:id', (req, res) => {
+  const groupId = req.params.id;
+  const { area_name, abbreviation } = req.body;
+
+  if (!area_name || !abbreviation) {
+    return res.status(400).json({ error: 'Nombre del grupo y abreviación son obligatorios' });
+  }
+
+  const query = 'UPDATE areas SET area_name = ?, abbreviation = ? WHERE id = ?';
+  db.query(query, [area_name, abbreviation, groupId], (err, results) => {
+    if (err) {
+      console.error('Error al actualizar el grupo:', err);
+      return res.status(500).json({ error: 'Error al actualizar el grupo' });
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+    res.json({ message: 'Grupo actualizado con éxito' });
+  });
+});
+
+// Eliminar un grupo
+app.delete('/api/areas/:id', (req, res) => {
+  const groupId = req.params.id;
+
+  const query = 'DELETE FROM areas WHERE id = ?';
+  db.query(query, [groupId], (err, results) => {
+    if (err) {
+      console.error('Error al eliminar el grupo:', err);
+      return res.status(500).json({ error: 'Error al eliminar el grupo' });
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+    res.json({ message: 'Grupo eliminado con éxito' });
+  });
+});
 
 
 
