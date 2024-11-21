@@ -242,7 +242,7 @@ app.post(
       const insertQuery = `
         INSERT INTO main_persona (
           folio, name, surname, birth_date, gender, civil_status, address, estate,
-          \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card, 
+          \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card,
           created_at, updated_at, areas_id, status, is_minor, is_disabled
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0, ?, ?)
       `;
@@ -365,7 +365,6 @@ app.use((err, req, res, next) => {
 
 
 
-// Ruta para obtener todas las personas y sus fotos/documentos
 app.get('/api/personas', (req, res) => {
   const query = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
@@ -380,13 +379,25 @@ app.get('/api/personas', (req, res) => {
       return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
     }
 
-    // Convierte las fotos y documentos en Base64
-    const processedResults = results.map((person) => ({
-      ...person,
-      photo: person.photo ? person.photo.toString('base64') : null,
-      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
-      id_card: person.id_card ? person.id_card.toString('base64') : null,
-    }));
+    // Procesa los resultados y convierte los archivos
+    const processedResults = results.map((person) => {
+      // Verifica si los datos son Buffer
+      const addressProofBuffer = Buffer.isBuffer(person.address_proof) ? person.address_proof : null;
+      const idCardBuffer = Buffer.isBuffer(person.id_card) ? person.id_card : null;
+
+      // Calcula el tamaño en bytes
+      const addressProofSize = addressProofBuffer ? addressProofBuffer.byteLength : null;
+      const idCardSize = idCardBuffer ? idCardBuffer.byteLength : null;
+
+      return {
+        ...person,
+        photo: person.photo ? person.photo.toString('base64') : null,
+        address_proof: addressProofBuffer ? addressProofBuffer.toString('base64') : null,
+        id_card: idCardBuffer ? idCardBuffer.toString('base64') : null,
+        address_proof_size: addressProofSize, // Tamaño del archivo en bytes
+        id_card_size: idCardSize,            // Tamaño del archivo en bytes
+      };
+    });
 
     res.json(processedResults);
   });
@@ -399,41 +410,62 @@ app.get('/api/personas', (req, res) => {
 
 
 
-
-
-// Ruta para obtener una persona por ID
 app.get('/api/personas/:id', (req, res) => {
   const { id } = req.params;
-  
-  const query = `
+
+  const queryPersona = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
            address, estate, \`foreign\`, phone, occupation, last_studies, 
-           address_proof, id_card, created_at, updated_at, status
+           address_proof, id_card, created_at, updated_at, status, is_minor
     FROM main_persona
     WHERE id = ?
   `;
 
-  db.query(query, [id], (err, results) => {
+  const queryTutores = `
+    SELECT name, relationship, phone 
+    FROM tutors 
+    WHERE main_persona_id = ?
+  `;
+
+  // Obtener datos de la persona
+  db.query(queryPersona, [id], (err, personaResults) => {
     if (err) {
       console.error('Error al obtener el perfil:', err);
       return res.status(500).json({ error: 'Error al obtener el perfil' });
     }
 
-    if (results.length === 0) {
+    if (personaResults.length === 0) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
     }
 
-    const person = results[0];
-    const processedPerson = {
-      ...person,
-      photo: person.photo ? person.photo.toString('base64') : null,
-      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
-      id_card: person.id_card ? person.id_card.toString('base64') : null,
+    // Procesar datos de la persona
+    const persona = {
+      ...personaResults[0],
+      photo: personaResults[0].photo ? personaResults[0].photo.toString('base64') : null,
+      address_proof: personaResults[0].address_proof ? personaResults[0].address_proof.toString('base64') : null,
+      id_card: personaResults[0].id_card ? personaResults[0].id_card.toString('base64') : null,
     };
 
-    res.json(processedPerson);
+    // Obtener tutores si es menor de edad
+    if (persona.is_minor) {
+      db.query(queryTutores, [id], (err, tutorResults) => {
+        if (err) {
+          console.error('Error al obtener tutores:', err);
+          return res.status(500).json({ error: 'Error al obtener tutores' });
+        }
+
+        // Si no hay tutores, retornar un arreglo vacío
+        persona.tutors = tutorResults.length > 0 ? tutorResults : [];
+        return res.json(persona);
+      });
+    } else {
+      // Si no es menor de edad, retornar la persona directamente
+      persona.tutors = []; // Asegurarse de que siempre sea un arreglo
+      return res.json(persona);
+    }
   });
 });
+
 
 
 
