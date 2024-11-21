@@ -480,6 +480,50 @@ app.get('/api/personas/:id', (req, res) => {
 
 
 
+
+
+
+
+
+
+
+app.post('/api/personas/:id/block', (req, res) => {
+  const { id } = req.params;
+
+  // Actualizar el estado de la persona en la base de datos
+  const query = 'UPDATE main_persona SET status = 1 WHERE id = ?';
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error('Error al bloquear el usuario:', err);
+      return res.status(500).json({ error: 'Error al bloquear el usuario' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({ message: 'Usuario bloqueado con éxito' });
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.get('/api/user-avatar/:id', (req, res) => {
   const userId = req.params.id;
 
@@ -908,6 +952,23 @@ app.put('/api/notifications/:id/check', (req, res) => {
 
 
 
+// Endpoint para obtener las fechas únicas de asistencias
+app.get('/api/assistence/dates', async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT DATE(created_at) as date
+      FROM assistence
+      WHERE created_at IS NOT NULL
+      ORDER BY date ASC
+    `;
+    const [results] = await db.query(query); // Asegúrate de usar la conexión a tu base de datos
+    const dates = results.map((row) => row.date); // Mapea los resultados a un arreglo de fechas
+    res.json(dates);
+  } catch (error) {
+    console.error('Error al obtener fechas:', error);
+    res.status(500).json({ error: 'Error al obtener fechas de asistencia' });
+  }
+});
 
 
 

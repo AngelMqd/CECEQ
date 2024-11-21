@@ -6,13 +6,15 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import ConfirmDeactivateModal from "./ConfirmDeactivateModal";
 
 function UserProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [person, setPerson] = useState(null);
   const [loading, setLoading] = useState(true);
-
+ 
+  const [isModalOpen, setModalOpen] = useState(false);
   useEffect(() => {
     axios
       .get(`http://localhost:3001/api/personas/${id}`)
@@ -55,14 +57,25 @@ function UserProfile() {
     );
   };
 
+  const handleBlockUser = async () => {
+    try {
+      await axios.post(`http://localhost:3001/api/personas/${person.id}/block`, { status: 1 });
+      alert("User successfully deactivated.");
+      setModalOpen(false); // Cierra el modal después de la confirmación
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      alert("An error occurred while deactivating the user.");
+    }
+  };
+  
   const handleEdit = () => {
-    navigate(`/editar-perfil/${id}`);
+    navigate(`/editar-perfil/${person.id}`);
   };
-
+  
   const handleHistory = () => {
-    navigate(`/historial-cambios/${id}`);
+    navigate(`/historial-cambios/${person.id}`);
   };
-
+  
   if (loading) {
     return <h1>Cargando...</h1>;
   }
@@ -369,31 +382,55 @@ function UserProfile() {
 
 
 
-        {/* Botones de Acción */}
-        <Grid item xs={12}>
-          <Box sx={{ textAlign: 'right' }}>
-            <Button variant="outlined" color="error" sx={{ textTransform: 'none' }} startIcon={<LockIcon />}>
-              Bloquear
-            </Button>
-            <Button variant="outlined" sx={{ textTransform: 'none', ml: 2 }} startIcon={<EditIcon />} onClick={handleEdit}>
-              Editar Perfil
-            </Button>
-            <Button
-              variant="outlined"
-              sx={{
-                textTransform: 'none',
-                ml: 2,
-                color: '#006400',
-                borderColor: '#006400',
-                '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' },
-              }}
-              startIcon={<HistoryIcon />}
-              onClick={handleHistory}
-            >
-              Historial de Cambios
-            </Button>
-          </Box>
-        </Grid>
+    
+     {/* Botones de Acción */}
+<Grid item xs={12}>
+  <Box sx={{ textAlign: 'right' }}>
+    {/* Botón para cambiar el estado a "Inactivo" */}
+    <Button
+        variant="outlined"
+        color="error"
+        sx={{ textTransform: "none" }}
+        onClick={() => setModalOpen(true)}
+      >
+        Bloquear
+      </Button>
+
+      {/* Modal de confirmación */}
+      <ConfirmDeactivateModal
+        open={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={handleBlockUser}
+      />
+
+    {/* Botón para abrir la vista de edición */}
+    <Button
+      variant="outlined"
+      sx={{ textTransform: 'none', ml: 2 }}
+      startIcon={<EditIcon />}
+      onClick={handleEdit}
+    >
+      Editar Perfil
+    </Button>
+
+    {/* Botón para ver historial */}
+    <Button
+      variant="outlined"
+      sx={{
+        textTransform: 'none',
+        ml: 2,
+        color: '#006400',
+        borderColor: '#006400',
+        '&:hover': { backgroundColor: '#00640010', borderColor: '#006400' },
+      }}
+      startIcon={<HistoryIcon />}
+      onClick={handleHistory}
+    >
+      Historial de Cambios
+    </Button>
+  </Box>
+</Grid>
+
       </Grid>
     </Box>
   );
