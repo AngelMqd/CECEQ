@@ -75,38 +75,45 @@ const Header = ({ toggleSidebar, onLogout }) => {
 
   // Maneja la apertura del modal y carga las notificaciones
   const handleOpenNotifications = () => {
-    onOpen();
-    fetchNotifications();
+    setNotifications([]); // Limpia las notificaciones anteriores
+    fetchNotifications(); // Carga las nuevas
+    onOpen(); // Abre el modal
   };
+  
 
   // Función para cargar las notificaciones desde la tabla `warnings`
   const fetchNotifications = async () => {
-    console.log("Iniciando carga de notificaciones...");
-    setLoading(true);
     try {
+      console.log('Intentando obtener notificaciones...');
       const response = await axios.get('http://localhost:3001/api/notifications');
-      console.log("Datos recibidos:", response.data); // Depuración para ver los datos
-      setNotifications(response.data); // Actualiza las notificaciones
+      console.log('Notificaciones recibidas:', response.data);
+      setNotifications(response.data);
     } catch (error) {
-      console.error('Error al cargar las notificaciones:', error);
-      setNotifications([]); // Manejo en caso de error: lista vacía
-    } finally {
-      console.log("Finalizando carga de notificaciones."); // Depuración
-      setLoading(false); // Cambiar el estado a false
+      console.error('Error al cargar las notificaciones:', error.message);
     }
   };
   
-  
 
+    useEffect(() => {
+    console.log('Notificaciones en el estado:', notifications);
+  }, [notifications]);
+  
+  
+  
+  
+  
   // Función para marcar la notificación como revisada
   const handleMarkAsChecked = async (id) => {
     try {
-      await axios.put(`http://localhost:3001/api/notifications/${id}/check`);
-      setNotifications(notifications.filter((notif) => notif.id !== id)); // Remueve la notificación de la lista
+        await axios.put(`http://localhost:3001/api/notifications/${id}/check`);
+        setNotifications(notifications.filter((notif) => notif.id !== id)); // Elimina la notificación revisada
     } catch (error) {
-      console.error('Error al marcar la notificación como revisada:', error);
+        console.error('Error al marcar la notificación como revisada:', error);
     }
-  };
+};
+
+  
+  
 
   const handleAddPerson = () => {
     navigate('/registrar-persona');
@@ -295,20 +302,22 @@ const Header = ({ toggleSidebar, onLogout }) => {
             {/* Notificaciones */}
             <Popover>
               <PopoverTrigger>
-                <IconButton
-                  aria-label="Notificaciones"
-                  icon={<Notifications fontSize="small" />}
-                  variant="ghost"
-                  onClick={handleOpenNotifications}
-                  sx={{
-                    color: '#6E40C9',
-                    bg: 'rgba(106, 39, 196, 0.1)',
-                    _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
-                    _active: { bg: 'rgba(106, 39, 196, 0.5)' },
-                    borderRadius: '10px',
-                    padding: '6px',
-                  }}
-                />
+              <IconButton
+  aria-label="Notificaciones"
+  icon={<Notifications fontSize="small" />}
+  variant="ghost"
+  onClick={handleOpenNotifications}
+  sx={{
+    color: notifications.length > 0 ? 'red' : '#6E40C9', // Cambia el color si hay notificaciones
+    bg: 'rgba(106, 39, 196, 0.1)',
+    _hover: { bg: 'rgba(106, 39, 196, 0.3)' },
+    _active: { bg: 'rgba(106, 39, 196, 0.5)' },
+    borderRadius: '10px',
+    padding: '6px',
+  }}
+/>
+
+
               </PopoverTrigger>
               <PopoverContent>
                 <PopoverArrow />
@@ -320,26 +329,11 @@ const Header = ({ toggleSidebar, onLogout }) => {
   ) : notifications.length > 0 ? (
     <VStack align="start" spacing={4}>
       {notifications.map((notif) => (
-        <Box
-          key={notif.id}
-          borderWidth="1px"
-          borderRadius="lg"
-          p={4}
-          w="100%"
-          bg="gray.50"
-        >
-          <Text>
-            <strong>Área:</strong> {notif.area_name}
-          </Text>
-          <Text>
-            <strong>Persona:</strong> {notif.main_persona_name}
-          </Text>
-          <Text>
-            <strong>Razón:</strong> {notif.reason}
-          </Text>
-          <Text>
-            <strong>Fecha de emisión:</strong> {new Date(notif.date_issued).toLocaleDateString()}
-          </Text>
+        <Box key={notif.id} borderWidth="1px" borderRadius="lg" p={4} w="100%" bg="gray.50">
+          <Text><strong>Área:</strong> {notif.area_name}</Text>
+          <Text><strong>Persona:</strong> {notif.main_persona_name}</Text>
+          <Text><strong>Razón:</strong> {notif.reason}</Text>
+          <Text><strong>Fecha de emisión:</strong> {new Date(notif.date_issued).toLocaleDateString()}</Text>
           <Button
             size="sm"
             mt={2}
@@ -355,6 +349,8 @@ const Header = ({ toggleSidebar, onLogout }) => {
     <Text>No hay notificaciones disponibles.</Text>
   )}
 </PopoverBody>
+
+
               </PopoverContent>
             </Popover>
 

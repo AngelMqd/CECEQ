@@ -6,6 +6,8 @@ const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcrypt'); 
 const app = express();
+const cron = require('node-cron');
+const db = require('./db'); // Asegúrate de que tienes configurada tu conexión a MySQL
 
 app.use(cors());
 app.use(express.json());
@@ -13,7 +15,7 @@ app.use(express.json());
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'angel820',
+  password: 'Master12$',
   database: 'ceceq'
 });
 
@@ -730,131 +732,116 @@ app.delete('/api/areas/:id', (req, res) => {
 });
 
 
-// Generar notificaciones para perfiles desactualizados
-app.post('/api/generate-warnings', (req, res) => {
+// Endpoint para obtener notificaciones pendientes
+app.get('/api/notifications', (req, res) => {
+  const query = `
+      SELECT w.id, w.reason, w.date_issued, a.area_name, m.name AS main_persona_name
+      FROM warnings w
+      JOIN areas a ON w.area_id = a.id
+      JOIN main_persona m ON w.main_persona_id = m.id
+      WHERE w.check IS NULL;
+  `;
+  db.query(query, (err, results) => {
+      if (err) {
+          console.error("Error al obtener las notificaciones pendientes:", err);
+          return res.status(500).json({ error: 'Error al obtener notificaciones pendientes' });
+      }
+      res.json(results);
+  });
+});
+
+
+// Función para generar notificaciones para perfiles desactualizados
+const generateWarnings = () => {
   const query = `
     SELECT id AS main_persona_id, areas_id AS area_id
     FROM main_persona
-    WHERE DATEDIFF(NOW(), updated_at) > 365;
+    WHERE DATEDIFF(NOW(), updated_at) >= 365;
   `;
 
   db.query(query, (err, results) => {
     if (err) {
       console.error('Error al buscar personas desactualizadas:', err);
-      return res.status(500).json({ error: 'Error al buscar personas desactualizadas' });
+      return;
     }
 
-    const warningsQuery = `
-      INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
-      VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
-      ON DUPLICATE KEY UPDATE date_issued = VALUES(date_issued);
-    `;
+    if (results.length > 0) {
+      console.log(`${results.length} personas desactualizadas encontradas.`);
 
-    results.forEach((row) => {
-      const { main_persona_id, area_id } = row;
-      const userId = 1; // Aquí puedes asignar un user_id fijo o basado en lógica
+      // Inserta una notificación para cada persona desactualizada
+      results.forEach((row) => {
+        const { main_persona_id, area_id } = row;
+        const userId = 1; // Cambia esto para usar la ID del usuario autenticado
+        const insertQuery = `
+          INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
+          VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
+          ON DUPLICATE KEY UPDATE date_issued = NOW();
+        `;
 
-      db.query(warningsQuery, [userId, area_id, main_persona_id], (err) => {
-        if (err) {
-          console.error('Error al insertar notificación:', err);
-        }
+        db.query(insertQuery, [userId, area_id, main_persona_id], (err) => {
+          if (err) {
+            console.error('Error al insertar notificación:', err);
+          }
+        });
       });
-    });
-
-    res.json({ message: 'Notificaciones generadas correctamente' });
-  });
-});
-
-// Listar notificaciones pendientes
-app.get('/api/warnings', (req, res) => {
-  const query = `
-    SELECT w.id, w.reason, w.date_issued, w.check, m.name, m.surname, a.area_name
-    FROM warnings w
-    INNER JOIN main_persona m ON w.main_persona_id = m.id
-    INNER JOIN areas a ON w.area_id = a.id
-    WHERE w.check IS NULL;
-  `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error al obtener notificaciones:', err);
-      return res.status(500).json({ error: 'Error al obtener notificaciones' });
+    } else {
+      console.log('No se encontraron personas desactualizadas.');
     }
-    res.json(results);
   });
-});
+};
 
-// Marcar notificación como resuelta
-app.put('/api/warnings/:id/resolve', (req, res) => {
-  const warningId = req.params.id;
-
-  const query = `
-  UPDATE warnings
-  SET \`check\` = NOW()
-  WHERE id = ?;
-`;
-
-
-  db.query(query, [warningId], (err, results) => {
-    if (err) {
-      console.error('Error al marcar como resuelta la notificación:', err);
-      return res.status(500).json({ error: 'Error al actualizar la notificación' });
-    }
-
-    res.json({ message: 'Notificación marcada como resuelta' });
-  });
-});
-
-// Obtener historial de notificaciones resueltas
-app.get('/api/warnings/resolved', (req, res) => {
-  const query = `
-    SELECT w.id, w.reason, w.date_issued, w.check, m.name, m.surname, a.area_name
-    FROM warnings w
-    INNER JOIN main_persona m ON w.main_persona_id = m.id
-    INNER JOIN areas a ON w.area_id = a.id
-    WHERE w.check IS NOT NULL;
-  `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error al obtener el historial de notificaciones:', err);
-      return res.status(500).json({ error: 'Error al obtener el historial de notificaciones' });
-    }
-    res.json(results);
-  });
-});
-
-// Endpoint para obtener las notificaciones
-app.get('/api/notifications', (req, res) => {
-  const query = `
-    SELECT w.id, w.reason, w.date_issued, a.area_name, m.name AS main_persona_name
-    FROM warnings w
-    JOIN areas a ON w.area_id = a.id
-    JOIN main_persona m ON w.main_persona_id = m.id
-    WHERE w.check IS NULL;
-  `;
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error al obtener las notificaciones:', err);
-      return res.status(500).json({ error: 'Error al obtener las notificaciones' });
-    }
-    res.json(results);
-  });
-});
-
-// Endpoint para marcar una notificación como revisada
 app.put('/api/notifications/:id/check', (req, res) => {
   const { id } = req.params;
   const query = 'UPDATE warnings SET `check` = NOW() WHERE id = ?';
+
   db.query(query, [id], (err) => {
-    if (err) {
-      console.error('Error al marcar la notificación como revisada:', err);
-      return res.status(500).json({ error: 'Error al marcar la notificación como revisada' });
-    }
-    res.json({ message: 'Notificación marcada como revisada' });
+      if (err) {
+          console.error("Error al marcar la notificación como revisada:", err);
+          return res.status(500).json({ error: 'Error al marcar como revisada' });
+      }
+      res.json({ message: 'Notificación marcada como revisada' });
   });
 });
 
+
+// Tarea programada para ejecutar cada hora
+cron.schedule('0 * * * *', async () => {
+  console.log("Iniciando revisión de personas desactualizadas...");
+
+  // Consulta para obtener las personas con más de un año sin actualizar
+  const query = `
+      SELECT id AS main_persona_id, areas_id AS area_id
+      FROM main_persona
+      WHERE DATEDIFF(NOW(), updated_at) > 365;
+  `;
+
+  db.query(query, (err, results) => {
+      if (err) {
+          console.error("Error al buscar personas desactualizadas:", err);
+          return;
+      }
+
+      console.log("Personas desactualizadas encontradas:", results);
+
+      results.forEach(({ main_persona_id, area_id }) => {
+          const warningsQuery = `
+              INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
+              VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
+              ON DUPLICATE KEY UPDATE date_issued = NOW();
+          `;
+
+          const userId = 1; // Cambia esto según el usuario actualmente logueado o usa un valor por defecto
+
+          db.query(warningsQuery, [userId, area_id, main_persona_id], (err) => {
+              if (err) {
+                  console.error("Error al insertar notificación:", err);
+              } else {
+                  console.log(`Notificación generada para persona ID ${main_persona_id}.`);
+              }
+          });
+      });
+  });
+});
 
 
 
@@ -867,6 +854,8 @@ app.use((req, res, next) => {
   console.log(`Solicitud recibida: ${req.method} ${req.url}`);
   next(); // Asegura que se pase al siguiente middleware o ruta
 });
+
+
 // Inicialización del servidor
 app.listen(3001, () => {
   console.log('Servidor corriendo en el puerto 3001');
