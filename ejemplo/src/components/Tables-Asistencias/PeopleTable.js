@@ -12,6 +12,7 @@ import {
   Avatar,
   TableHead,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -32,31 +33,57 @@ function PeopleTable() {
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [dates, setDates] = useState([]); // Hook movido dentro del componente
 
   useEffect(() => {
     fetchData();
+    fetchDates(); // Llama a fetchDates para cargar las fechas
   }, []);
 
   const fetchData = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/assistence');
-      const formattedData = response.data.map((row) => ({
-        ...row,
-        photo: row.photo ? `data:image/jpeg;base64,${row.photo}` : null, // Procesar fotos en Base64
-        hora_entrada: row.hora_entrada
-          ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss') // Formatear hora de entrada
-          : null,
-        hora_salida: row.hora_salida
-          ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss') // Formatear hora de salida
-          : null,
-      }));
-      setRows(formattedData);
+      if (response && response.data) {
+        const formattedData = response.data.map((row) => ({
+          ...row,
+          photo: row.photo ? `data:image/jpeg;base64,${row.photo}` : null,
+          hora_entrada: row.hora_entrada
+            ? format(new Date(row.hora_entrada), 'yyyy-MM-dd HH:mm:ss')
+            : 'No registrada',
+          hora_salida: row.hora_salida
+            ? format(new Date(row.hora_salida), 'yyyy-MM-dd HH:mm:ss') // Corregido: paréntesis cerrado
+            : 'No registrada',
+        }));
+        setRows(formattedData);
+      } else {
+        console.warn('La respuesta de la API no contiene datos.');
+      }
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error('Error al cargar datos:', error.message || error);
     }
   };
-  
 
+  const fetchDates = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/assistence/dates');
+      setDates(response.data || []);
+    } catch (error) {
+      console.error('Error al cargar las fechas:', error.message || error);
+    }
+  };
+
+  const handleFilterByDate = async (date) => {
+    try {
+      const response = await axios.get(`http://localhost:3001/api/assistence?date=${date}`);
+      setRows(response.data || []);
+    } catch (error) {
+      console.error('Error al filtrar por fecha:', error.message || error);
+    }
+  };
+
+  const handleClearFilter = async () => {
+    await fetchData();
+  };
   const handleEntrada = async (main_persona_id) => {
     if (!main_persona_id) {
       alert('ID de usuario inválido.');
@@ -93,7 +120,6 @@ function PeopleTable() {
 
   const renderActionButton = (row) => {
     if (!row.hora_entrada || (row.hora_entrada && row.hora_salida)) {
-      // Si no hay hora de entrada o si ambas están completadas, muestra el botón de entrada
       return (
         <Button
           variant="contained"
@@ -104,7 +130,6 @@ function PeopleTable() {
         </Button>
       );
     } else if (row.hora_entrada && !row.hora_salida) {
-      // Si hay entrada pero no salida, muestra el botón de salida
       return (
         <Button
           variant="contained"
@@ -115,7 +140,6 @@ function PeopleTable() {
         </Button>
       );
     } else {
-      // Si ambas están completadas y no se permite nueva entrada, muestra "Completado"
       return (
         <Tooltip title="Registro completado">
           <Button variant="outlined" disabled>
@@ -125,17 +149,18 @@ function PeopleTable() {
       );
     }
   };
+
   const renderRows = () => {
     return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
       <TableRow hover key={index}>
         <TableCell align="center">{row.folio || 'N/A'}</TableCell>
         <TableCell align="center">
-                      {row.photo ? (
-                        <Avatar src={row.photo} alt="Foto" sx={{ width: 56, height: 56 }} />
-                      ) : (
-                        <Avatar sx={{ width: 56, height: 56 }}>N/A</Avatar>
-                      )}
-                    </TableCell>
+          {row.photo ? (
+            <Avatar src={row.photo} alt="Foto" sx={{ width: 56, height: 56 }} />
+          ) : (
+            <Avatar sx={{ width: 56, height: 56 }}>N/A</Avatar>
+          )}
+        </TableCell>
         <TableCell align="center">{row.name || 'N/A'}</TableCell>
         <TableCell align="center">{row.surname || 'N/A'}</TableCell>
         <TableCell align="center">{row.phone || 'N/A'}</TableCell>
@@ -152,13 +177,32 @@ function PeopleTable() {
   };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 25));
+    setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
-     
+    <Box sx={{ width: '100%', padding: 2 }}>
+      <Typography variant="h5" sx={{ marginBottom: 2 }}>
+        Registro de Asistencias
+      </Typography>
+
+      <Box sx={{ marginBottom: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        {dates.map((date) => (
+          <Button
+            key={date}
+            variant="contained"
+            color="primary"
+            onClick={() => handleFilterByDate(date)}
+          >
+            {date}
+          </Button>
+        ))}
+        <Button variant="outlined" color="secondary" onClick={handleClearFilter}>
+          Mostrar Todas
+        </Button>
+      </Box>
+
       <Paper sx={{ width: '100%', mb: 2 }}>
         <TableContainer>
           <Table sx={{ minWidth: 750 }} size="medium">
@@ -186,6 +230,6 @@ function PeopleTable() {
       </Paper>
     </Box>
   );
-}
+};
 
 export default PeopleTable;

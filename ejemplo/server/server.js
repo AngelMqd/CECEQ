@@ -207,6 +207,8 @@ app.post(
       tutor2_name,
       tutor2_relationship,
       tutor2_phone,
+      disability_type,
+      disability_description,
     } = req.body;
 
     const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
@@ -222,7 +224,7 @@ app.post(
     const birthDate = new Date(birth_date);
     const currentDate = new Date();
     const age = currentDate.getFullYear() - birthDate.getFullYear();
-    const isMinor = (currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age))) ? age < 18 : age <= 18;
+    const isMinor = currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
 
     // Verificar si el folio ya existe
     const checkFolioQuery = 'SELECT COUNT(*) AS count FROM main_persona WHERE folio = ?';
@@ -242,9 +244,9 @@ app.post(
       const insertQuery = `
         INSERT INTO main_persona (
           folio, name, surname, birth_date, gender, civil_status, address, estate,
-          \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card, 
-          created_at, updated_at, areas_id, status, is_minor
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0, ?)
+          \`foreign\`, phone, occupation, last_studies, photo, address_proof, id_card,
+          created_at, updated_at, areas_id, status, is_minor, is_disabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, 0, ?, ?)
       `;
 
       db.query(
@@ -267,6 +269,7 @@ app.post(
           idCard,
           area_id,
           isMinor ? 1 : 0,
+          disability_type ? 1 : 0, // Si hay discapacidad, marcar como 1
         ],
         (err, result) => {
           if (err) {
@@ -274,39 +277,54 @@ app.post(
             return res.status(500).json({ error: 'Error saving to database' });
           }
 
+          const mainPersonaId = result.insertId;
+
           // Insertar en tutors si isMinor es 1
           if (isMinor) {
-            // Insertar el primer tutor (obligatorio)
             const tutor1InsertQuery = `
               INSERT INTO tutors (name, relationship, phone, main_persona_id)
               VALUES (?, ?, ?, ?)
             `;
-            db.query(tutor1InsertQuery, [tutor1_name, tutor1_relationship, tutor1_phone, result.insertId], (err) => {
+            db.query(tutor1InsertQuery, [tutor1_name, tutor1_relationship, tutor1_phone, mainPersonaId], (err) => {
               if (err) {
                 console.error('Error saving first tutor:', err);
                 return res.status(500).json({ error: 'Error saving first tutor' });
               }
 
-              // Insertar el segundo tutor (si se proporcionan datos)
               if (tutor2_name && tutor2_relationship && tutor2_phone) {
                 const tutor2InsertQuery = `
                   INSERT INTO tutors (name, relationship, phone, main_persona_id)
                   VALUES (?, ?, ?, ?)
                 `;
-                db.query(tutor2InsertQuery, [tutor2_name, tutor2_relationship, tutor2_phone, result.insertId], (err) => {
+                db.query(tutor2InsertQuery, [tutor2_name, tutor2_relationship, tutor2_phone, mainPersonaId], (err) => {
                   if (err) {
                     console.error('Error saving second tutor:', err);
                     return res.status(500).json({ error: 'Error saving second tutor' });
                   }
-                  res.json({ message: 'Person and tutors registered successfully' });
                 });
-              } else {
-                res.json({ message: 'Person and first tutor registered successfully' });
               }
             });
-          } else {
-            res.json({ message: 'Person registered successfully' });
           }
+
+          // Registrar discapacidad si aplica
+          if (disability_type && disability_description) {
+            const disabilityInsertQuery = `
+              INSERT INTO disabilities (main_persona_id, disability_type, description, created_at, updated_at)
+              VALUES (?, ?, ?, NOW(), NOW())
+            `;
+            db.query(
+              disabilityInsertQuery,
+              [mainPersonaId, disability_type, disability_description],
+              (err) => {
+                if (err) {
+                  console.error('Error saving disability:', err);
+                  return res.status(500).json({ error: 'Error saving disability' });
+                }
+              }
+            );
+          }
+
+          res.json({ message: 'Person, tutors, and disability (if applicable) registered successfully' });
         }
       );
     });
@@ -349,7 +367,6 @@ app.use((err, req, res, next) => {
 
 
 
-// Ruta para obtener todas las personas y sus fotos/documentos
 app.get('/api/personas', (req, res) => {
   const query = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
@@ -364,13 +381,25 @@ app.get('/api/personas', (req, res) => {
       return res.status(500).json({ error: 'Error al obtener los datos de la base de datos' });
     }
 
-    // Convierte las fotos y documentos en Base64
-    const processedResults = results.map((person) => ({
-      ...person,
-      photo: person.photo ? person.photo.toString('base64') : null,
-      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
-      id_card: person.id_card ? person.id_card.toString('base64') : null,
-    }));
+    // Procesa los resultados y convierte los archivos
+    const processedResults = results.map((person) => {
+      // Verifica si los datos son Buffer
+      const addressProofBuffer = Buffer.isBuffer(person.address_proof) ? person.address_proof : null;
+      const idCardBuffer = Buffer.isBuffer(person.id_card) ? person.id_card : null;
+
+      // Calcula el tamaño en bytes
+      const addressProofSize = addressProofBuffer ? addressProofBuffer.byteLength : null;
+      const idCardSize = idCardBuffer ? idCardBuffer.byteLength : null;
+
+      return {
+        ...person,
+        photo: person.photo ? person.photo.toString('base64') : null,
+        address_proof: addressProofBuffer ? addressProofBuffer.toString('base64') : null,
+        id_card: idCardBuffer ? idCardBuffer.toString('base64') : null,
+        address_proof_size: addressProofSize, // Tamaño del archivo en bytes
+        id_card_size: idCardSize,            // Tamaño del archivo en bytes
+      };
+    });
 
     res.json(processedResults);
   });
@@ -383,41 +412,106 @@ app.get('/api/personas', (req, res) => {
 
 
 
-
-
-// Ruta para obtener una persona por ID
 app.get('/api/personas/:id', (req, res) => {
   const { id } = req.params;
-  
-  const query = `
+
+  const queryPersona = `
     SELECT id, folio, photo, name, surname, birth_date, gender, civil_status, 
            address, estate, \`foreign\`, phone, occupation, last_studies, 
-           address_proof, id_card, created_at, updated_at, status
+           address_proof, id_card, created_at, updated_at, status, is_minor
     FROM main_persona
     WHERE id = ?
   `;
 
-  db.query(query, [id], (err, results) => {
+  const queryTutores = `
+    SELECT name, relationship, phone 
+    FROM tutors 
+    WHERE main_persona_id = ?
+  `;
+
+  // Obtener datos de la persona
+  db.query(queryPersona, [id], (err, personaResults) => {
     if (err) {
       console.error('Error al obtener el perfil:', err);
       return res.status(500).json({ error: 'Error al obtener el perfil' });
     }
 
-    if (results.length === 0) {
+    if (personaResults.length === 0) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
     }
 
-    const person = results[0];
-    const processedPerson = {
-      ...person,
-      photo: person.photo ? person.photo.toString('base64') : null,
-      address_proof: person.address_proof ? person.address_proof.toString('base64') : null,
-      id_card: person.id_card ? person.id_card.toString('base64') : null,
+    // Procesar datos de la persona
+    const persona = {
+      ...personaResults[0],
+      photo: personaResults[0].photo ? personaResults[0].photo.toString('base64') : null,
+      address_proof: personaResults[0].address_proof ? personaResults[0].address_proof.toString('base64') : null,
+      id_card: personaResults[0].id_card ? personaResults[0].id_card.toString('base64') : null,
     };
 
-    res.json(processedPerson);
+    // Obtener tutores si es menor de edad
+    if (persona.is_minor) {
+      db.query(queryTutores, [id], (err, tutorResults) => {
+        if (err) {
+          console.error('Error al obtener tutores:', err);
+          return res.status(500).json({ error: 'Error al obtener tutores' });
+        }
+
+        // Si no hay tutores, retornar un arreglo vacío
+        persona.tutors = tutorResults.length > 0 ? tutorResults : [];
+        return res.json(persona);
+      });
+    } else {
+      // Si no es menor de edad, retornar la persona directamente
+      persona.tutors = []; // Asegurarse de que siempre sea un arreglo
+      return res.json(persona);
+    }
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.post('/api/personas/:id/block', (req, res) => {
+  const { id } = req.params;
+
+  // Actualizar el estado de la persona en la base de datos
+  const query = 'UPDATE main_persona SET status = 1 WHERE id = ?';
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error('Error al bloquear el usuario:', err);
+      return res.status(500).json({ error: 'Error al bloquear el usuario' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({ message: 'Usuario bloqueado con éxito' });
+  });
+});
+
+
+
+
+
 
 
 
@@ -845,6 +939,23 @@ cron.schedule('0 * * * *', async () => {
 
 
 
+// Endpoint para obtener las fechas únicas de asistencias
+app.get('/api/assistence/dates', async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT DATE(created_at) as date
+      FROM assistence
+      WHERE created_at IS NOT NULL
+      ORDER BY date ASC
+    `;
+    const [results] = await db.query(query); // Asegúrate de usar la conexión a tu base de datos
+    const dates = results.map((row) => row.date); // Mapea los resultados a un arreglo de fechas
+    res.json(dates);
+  } catch (error) {
+    console.error('Error al obtener fechas:', error);
+    res.status(500).json({ error: 'Error al obtener fechas de asistencia' });
+  }
+});
 
 
 
