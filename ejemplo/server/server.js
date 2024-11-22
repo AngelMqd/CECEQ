@@ -7,7 +7,7 @@ const multer = require('multer');
 const bcrypt = require('bcrypt'); 
 const app = express();
 const cron = require('node-cron');
-const db = require('./db'); // Asegúrate de que tienes configurada tu conexión a MySQL
+
 
 app.use(cors());
 app.use(express.json());
@@ -827,31 +827,70 @@ app.delete('/api/areas/:id', (req, res) => {
 
 
 // Endpoint para obtener notificaciones pendientes
-app.get('/api/notifications', (req, res) => {
-  const query = `
+app.put('/api/notifications/:id/check', (req, res) => {
+  const { id } = req.params;
+
+  const deleteQuery = `
+    DELETE FROM warnings
+    WHERE id = ?;
+  `;
+
+  db.query(deleteQuery, [id], (err) => {
+    if (err) {
+      console.error("Error al eliminar la notificación:", err);
+      return res.status(500).json({ error: 'Error al eliminar la notificación' });
+    }
+
+    // Consulta para obtener las notificaciones restantes
+    const getRemainingQuery = `
       SELECT w.id, w.reason, w.date_issued, a.area_name, m.name AS main_persona_name
       FROM warnings w
       JOIN areas a ON w.area_id = a.id
       JOIN main_persona m ON w.main_persona_id = m.id
       WHERE w.check IS NULL;
-  `;
-  db.query(query, (err, results) => {
+    `;
+
+    db.query(getRemainingQuery, (err, results) => {
       if (err) {
-          console.error("Error al obtener las notificaciones pendientes:", err);
-          return res.status(500).json({ error: 'Error al obtener notificaciones pendientes' });
+        console.error("Error al obtener notificaciones restantes:", err);
+        return res.status(500).json({ error: 'Error al obtener notificaciones restantes' });
       }
-      res.json(results);
+
+      // Depuración adicional
+      console.log("Resultados de getRemainingQuery:", results);
+
+      if (!results || results.length === 0) {
+        console.warn("No se encontraron notificaciones restantes.");
+        return res.json({
+          message: 'Notificación marcada como revisada',
+          remainingNotifications: [], // Lista vacía si no hay notificaciones restantes
+        });
+      }
+
+      res.json({
+        message: 'Notificación marcada como revisada',
+        remainingNotifications: results, // Devuelve las notificaciones restantes
+      });
+    });
   });
 });
 
 
+
+
+
+
+
+
+
+
 // Función para generar notificaciones para perfiles desactualizados
 const generateWarnings = () => {
-  const query = `
-    SELECT id AS main_persona_id, areas_id AS area_id
-    FROM main_persona
-    WHERE DATEDIFF(NOW(), updated_at) >= 365;
-  `;
+  const insertQuery = `
+  INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
+  VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
+  ON DUPLICATE KEY UPDATE date_issued = VALUES(date_issued);
+`;
 
   db.query(query, (err, results) => {
     if (err) {
@@ -884,23 +923,32 @@ const generateWarnings = () => {
   });
 };
 
-app.put('/api/notifications/:id/check', (req, res) => {
-  const { id } = req.params;
-  const query = 'UPDATE warnings SET `check` = NOW() WHERE id = ?';
 
-  db.query(query, [id], (err) => {
-      if (err) {
-          console.error("Error al marcar la notificación como revisada:", err);
-          return res.status(500).json({ error: 'Error al marcar como revisada' });
-      }
-      res.json({ message: 'Notificación marcada como revisada' });
-  });
-});
+
 
 
 // Tarea programada para ejecutar cada hora
 cron.schedule('0 * * * *', async () => {
   console.log("Iniciando revisión de personas desactualizadas...");
+
+  // Limpia notificaciones repetidas
+  const cleanupQuery = `
+    DELETE w1
+    FROM warnings w1
+    JOIN warnings w2
+    ON w1.main_persona_id = w2.main_persona_id
+    AND w1.id > w2.id
+    AND w1.reason = w2.reason
+    WHERE w1.check IS NULL;
+  `;
+
+  db.query(cleanupQuery, (err, results) => {
+    if (err) {
+      console.error("Error al limpiar notificaciones repetidas:", err);
+    } else {
+      console.log("Notificaciones repetidas eliminadas:", results.affectedRows);
+    }
+  });
 
   // Consulta para obtener las personas con más de un año sin actualizar
   const query = `
@@ -914,8 +962,6 @@ cron.schedule('0 * * * *', async () => {
           console.error("Error al buscar personas desactualizadas:", err);
           return;
       }
-
-      console.log("Personas desactualizadas encontradas:", results);
 
       results.forEach(({ main_persona_id, area_id }) => {
           const warningsQuery = `
@@ -936,6 +982,7 @@ cron.schedule('0 * * * *', async () => {
       });
   });
 });
+
 
 
 
