@@ -825,6 +825,27 @@ app.delete('/api/areas/:id', (req, res) => {
   });
 });
 
+app.get('/api/notifications', (req, res) => {
+  const query = `
+    SELECT w.id, w.reason, w.date_issued, a.area_name, m.name AS main_persona_name
+    FROM warnings w
+    JOIN areas a ON w.area_id = a.id
+    JOIN main_persona m ON w.main_persona_id = m.id
+    WHERE w.check IS NULL
+    ORDER BY w.date_issued DESC;
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error al obtener notificaciones:", err);
+      res.status(500).json({ error: "Error al obtener notificaciones" });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
 
 // Endpoint para obtener notificaciones pendientes
 app.put('/api/notifications/:id/check', (req, res) => {
@@ -886,42 +907,45 @@ app.put('/api/notifications/:id/check', (req, res) => {
 
 // Función para generar notificaciones para perfiles desactualizados
 const generateWarnings = () => {
-  const insertQuery = `
-  INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
-  VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
-  ON DUPLICATE KEY UPDATE date_issued = VALUES(date_issued);
-`;
+  console.log("Generando notificaciones para perfiles desactualizados...");
+
+  const query = `
+    SELECT id AS main_persona_id, areas_id AS area_id
+    FROM main_persona
+    WHERE DATEDIFF(NOW(), updated_at) > 365;
+  `;
 
   db.query(query, (err, results) => {
     if (err) {
-      console.error('Error al buscar personas desactualizadas:', err);
+      console.error("Error al buscar personas desactualizadas:", err);
       return;
     }
 
-    if (results.length > 0) {
-      console.log(`${results.length} personas desactualizadas encontradas.`);
-
-      // Inserta una notificación para cada persona desactualizada
-      results.forEach((row) => {
-        const { main_persona_id, area_id } = row;
-        const userId = 1; // Cambia esto para usar la ID del usuario autenticado
-        const insertQuery = `
-          INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
-          VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
-          ON DUPLICATE KEY UPDATE date_issued = NOW();
-        `;
-
-        db.query(insertQuery, [userId, area_id, main_persona_id], (err) => {
-          if (err) {
-            console.error('Error al insertar notificación:', err);
-          }
-        });
-      });
-    } else {
-      console.log('No se encontraron personas desactualizadas.');
+    if (results.length === 0) {
+      console.log("No se encontraron personas desactualizadas.");
+      return;
     }
+
+    results.forEach(({ main_persona_id, area_id }) => {
+      const warningsQuery = `
+        INSERT INTO warnings (user_id, area_id, reason, date_issued, main_persona_id)
+        VALUES (?, ?, 'Actualizar documentación', NOW(), ?)
+        ON DUPLICATE KEY UPDATE date_issued = NOW();
+      `;
+
+      const userId = 1; // Cambia esto según el usuario autenticado
+
+      db.query(warningsQuery, [userId, area_id, main_persona_id], (err) => {
+        if (err) {
+          console.error("Error al insertar notificación:", err);
+        } else {
+          console.log(`Notificación generada para persona ID ${main_persona_id}.`);
+        }
+      });
+    });
   });
 };
+
 
 
 
