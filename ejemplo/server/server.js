@@ -15,7 +15,7 @@ app.use(express.json());
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'Master12$',
+  password: 'angel820',
   database: 'ceceq'
 });
 
@@ -745,6 +745,98 @@ app.get('/api/assistence/entradasSinSalida', (req, res) => {
 });
 
 
+
+
+
+
+
+app.get('/api/assistence/by-date/:date', (req, res) => {
+  const selectedDate = req.params.date;
+
+  const query = `
+    SELECT 
+      a.id, 
+      a.created_at, 
+      a.exit_time, 
+      a.section_event, 
+      a.main_persona_id, 
+      mp.folio, 
+      mp.name, 
+      mp.surname, 
+      mp.phone, 
+      mp.photo 
+    FROM assistence a
+    JOIN main_persona mp ON a.main_persona_id = mp.id
+    WHERE DATE(a.created_at) = ?
+  `;
+
+  db.query(query, [selectedDate], (error, results) => {
+    if (error) {
+      console.error('Error al obtener asistencias por fecha:', error);
+      return res.status(500).json({ error: 'Error al obtener asistencias por fecha' });
+    }
+
+    res.json(results);
+  });
+});
+
+
+
+app.get('/api/assistence/details', (req, res) => {
+  const { date } = req.query;
+  const startDate = `${date} 00:00:00`;
+  const endDate = `${date} 23:59:59`;
+
+  const query = `
+    SELECT 
+      mp.folio, mp.name, mp.surname, mp.phone, a.created_at AS hora_entrada, 
+      a.exit_time AS hora_salida, a.section_event
+    FROM assistence a
+    JOIN main_persona mp ON a.main_persona_id = mp.id
+    WHERE a.created_at BETWEEN ? AND ?
+    ORDER BY a.created_at;
+  `;
+
+  db.query(query, [startDate, endDate], (error, results) => {
+    if (error) {
+      console.error('Error al obtener detalles:', error);
+      return res.status(500).json({ error: 'Error al obtener detalles de asistencia' });
+    }
+    res.json(results);
+  });
+});
+
+
+
+
+
+app.get('/api/assistence/date/:date', (req, res) => {
+  const date = req.params.date; // Fecha recibida como parámetro
+  const query = `
+    SELECT 
+        mp.folio, 
+        mp.name, 
+        mp.surname, 
+        mp.phone, 
+        a.created_at AS hora_entrada, 
+        a.exit_time AS hora_salida, 
+        a.section_event
+    FROM 
+        assistence a
+    JOIN 
+        main_persona mp ON mp.id = a.main_persona_id
+    WHERE 
+        DATE(a.created_at) = ?;
+  `;
+
+  db.query(query, [date], (err, results) => {
+    if (err) {
+      console.error('Error ejecutando la consulta:', err);
+      return res.status(500).json({ error: 'Error ejecutando la consulta' });
+    }
+    res.json(results);
+  });
+});
 
 
 

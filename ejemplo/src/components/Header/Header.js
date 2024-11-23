@@ -8,10 +8,6 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  PopoverArrow,
-  PopoverCloseButton,
-  PopoverHeader,
-  PopoverBody,
   Button,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -32,7 +28,7 @@ import { useBreakpointValue } from "@chakra-ui/react";
 const Header = ({ toggleSidebar, onLogout }) => {
   const { onOpen } = useDisclosure(); // Manejo del modal de notificaciones
   const [notifications, setNotifications] = useState([]); // Inicialización como array vacío
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [userPhoto, setUserPhoto] = useState(null); // Foto del usuario
