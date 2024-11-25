@@ -7,7 +7,7 @@ const multer = require('multer');
 const bcrypt = require('bcrypt'); 
 const app = express();
 const cron = require('node-cron');
-
+const Tutor = require('./models/Tutor');
 
 app.use(cors());
 app.use(express.json());
@@ -32,6 +32,41 @@ db.connect((err) => {
 
 
 
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database'); // Ajusta según la configuración de tu base de datos
+
+const Tutor = sequelize.define('Tutor', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  relationship: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  main_persona_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'main_persona',
+      key: 'id',
+    },
+  },
+}, {
+  tableName: 'tutors',
+  timestamps: false,
+});
+
+module.exports = Tutor;
 
 
 
@@ -339,9 +374,222 @@ app.post(
 
 
 
+app.put(
+  '/api/personas/:id',
+  upload.fields([{ name: 'photo' }, { name: 'address_proof' }, { name: 'id_card' }]),
+  async (req, res) => {
+    const { id } = req.params;
+    const {
+      folio,
+      name,
+      surname,
+      birth_date,
+      gender,
+      civil_status,
+      address,
+      estate,
+      foreign: isForeign,
+      phone,
+      occupation,
+      last_studies,
+      area_id,
+      tutor1_name,
+      tutor1_relationship,
+      tutor1_phone,
+      tutor2_name,
+      tutor2_relationship,
+      tutor2_phone,
+      disability_type,
+      disability_description,
+    } = req.body;
+
+    const photo = req.files['photo'] ? req.files['photo'][0].buffer : null;
+    const addressProof = req.files['address_proof'] ? req.files['address_proof'][0].buffer : null;
+    const idCard = req.files['id_card'] ? req.files['id_card'][0].buffer : null;
+
+    // Validar campos requeridos
+    if (!folio || !name || !surname || !birth_date || !gender || !civil_status || !address || !phone || !area_id) {
+      return res.status(400).json({ error: 'Todos los campos requeridos deben ser completados.' });
+    }
+
+    // Calcular si es menor de edad
+    const birthDate = new Date(birth_date);
+    const currentDate = new Date();
+    const age = currentDate.getFullYear() - birthDate.getFullYear();
+    const isMinor = currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
+
+    const updateQuery = `
+      UPDATE main_persona
+      SET folio = ?, name = ?, surname = ?, birth_date = ?, gender = ?, civil_status = ?,
+          address = ?, estate = ?, \`foreign\` = ?, phone = ?, occupation = ?, last_studies = ?,
+          areas_id = ?, updated_at = NOW(), photo = ?, address_proof = ?, id_card = ?, is_minor = ?, is_disabled = ?
+      WHERE id = ?
+    `;
+
+    const values = [
+      folio,
+      name,
+      surname,
+      birth_date,
+      gender,
+      civil_status,
+      address,
+      estate,
+      isForeign || 0,
+      phone,
+      occupation,
+      last_studies,
+      area_id,
+      photo,
+      addressProof,
+      idCard,
+      isMinor ? 1 : 0,
+      disability_type ? 1 : 0,
+      id,
+    ];
+
+    try {
+      // Actualizar persona
+      await db.promise().query(updateQuery, values);
+
+      // Actualizar tutores si es menor de edad
+      if (isMinor) {
+        await db.promise().query(`DELETE FROM tutors WHERE main_persona_id = ?`, [id]);
+
+        const tutors = [];
+        if (tutor1_name && tutor1_relationship && tutor1_phone) {
+          tutors.push([tutor1_name, tutor1_relationship, tutor1_phone, id]);
+        }
+
+        if (tutor2_name && tutor2_relationship && tutor2_phone) {
+          tutors.push([tutor2_name, tutor2_relationship, tutor2_phone, id]);
+        }
+
+        if (tutors.length > 0) {
+          const insertTutorQuery = `
+            INSERT INTO tutors (name, relationship, phone, main_persona_id)
+            VALUES ?
+          `;
+          await db.promise().query(insertTutorQuery, [tutors]);
+        }
+      } else {
+        // Si no es menor, eliminamos tutores asociados
+        await db.promise().query(`DELETE FROM tutors WHERE main_persona_id = ?`, [id]);
+      }
+
+      // Actualizar discapacidad si aplica
+      if (disability_type && disability_description) {
+        await db.promise().query(`DELETE FROM disabilities WHERE main_persona_id = ?`, [id]);
+
+        const insertDisabilityQuery = `
+          INSERT INTO disabilities (main_persona_id, disability_type, description, created_at, updated_at)
+          VALUES (?, ?, ?, NOW(), NOW())
+        `;
+        await db.promise().query(insertDisabilityQuery, [id, disability_type, disability_description]);
+      } else {
+        // Si no hay discapacidad, eliminamos registros existentes
+        await db.promise().query(`DELETE FROM disabilities WHERE main_persona_id = ?`, [id]);
+      }
+
+      res.json({ message: 'Persona actualizada con éxito.' });
+    } catch (err) {
+      console.error('Error al actualizar:', err);
+      res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+  }
+);
 
 
 
+
+
+
+
+app.post('/api/disabilities/update', async (req, res) => {
+  const { main_persona_id, disability_type, description } = req.body;
+
+  try {
+    const [result] = await db.query(
+      `INSERT INTO disabilities (main_persona_id, disability_type, description)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+       disability_type = VALUES(disability_type),
+       description = VALUES(description)`,
+      [main_persona_id, disability_type, description]
+    );
+    res.status(200).json({ message: 'Discapacidad actualizada correctamente.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al actualizar discapacidad.' });
+  }
+});
+
+
+app.delete('/api/disabilities/:main_persona_id', async (req, res) => {
+  const { main_persona_id } = req.params;
+
+  try {
+    await db.query(`DELETE FROM disabilities WHERE main_persona_id = ?`, [
+      main_persona_id,
+    ]);
+    res.status(200).json({ message: 'Discapacidad eliminada correctamente.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al eliminar discapacidad.' });
+  }
+});
+
+app.get('/api/tutors/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const tutors = await Tutor.findAll({ where: { main_persona_id: id } });
+
+    if (!tutors || tutors.length === 0) {
+      return res.status(200).json([]); // Devuelve un array vacío si no hay tutores
+    }
+
+    res.status(200).json(tutors);
+  } catch (error) {
+    console.error("Error fetching tutors:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+// Actualizar o crear tutores
+app.post("/api/tutors/update", async (req, res) => {
+  try {
+    const tutors = req.body;
+    for (const tutor of tutors) {
+      const existingTutor = await db.query(
+        "SELECT * FROM tutors WHERE main_persona_id = ? AND name = ?",
+        [tutor.main_persona_id, tutor.name]
+      );
+      if (existingTutor.length > 0) {
+        // Actualizar tutor existente
+        await db.query(
+          "UPDATE tutors SET relationship = ?, phone = ? WHERE id = ?",
+          [tutor.relationship, tutor.phone, existingTutor[0].id]
+        );
+      } else {
+        // Crear tutor nuevo
+        await db.query("INSERT INTO tutors (name, relationship, phone, main_persona_id) VALUES (?, ?, ?, ?)", [
+          tutor.name,
+          tutor.relationship,
+          tutor.phone,
+          tutor.main_persona_id,
+        ]);
+      }
+    }
+    res.status(200).send({ message: "Tutors updated successfully" });
+  } catch (error) {
+    console.error("Error updating tutors:", error);
+    res.status(500).send({ message: "Error updating tutors" });
+  }
+});
 
 
 

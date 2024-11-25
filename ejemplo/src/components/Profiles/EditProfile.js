@@ -1,66 +1,139 @@
-import React, { useState, useEffect  } from 'react';
-import { Box, Button, TextField, Typography, Snackbar, Alert, Checkbox, FormControlLabel,   FormControl, InputLabel,Select, MenuItem} from '@mui/material';
-import { useDropzone } from 'react-dropzone';
-import InsertPhoto from '@mui/icons-material/InsertPhoto';
-import FolderCopyIcon from '@mui/icons-material/FolderCopy';
-import RecentActorsIcon from '@mui/icons-material/RecentActors';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Snackbar,
+  Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Grid,
+  FormControlLabel, 
+  Checkbox,         
+} from "@mui/material";
+import { useDropzone } from "react-dropzone";
+import InsertPhoto from "@mui/icons-material/InsertPhoto";
+import FolderCopyIcon from "@mui/icons-material/FolderCopy";
+import RecentActorsIcon from "@mui/icons-material/RecentActors";
 
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
 
-function RegisterPersonForm() {
-
-  const [areas, setAreas] = useState([]);
-  const [selectedAbbreviation, setSelectedAbbreviation] = useState('');
-  const [lastFolioNumber, setLastFolioNumber] = useState(0);
+const CrudEditForm = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     
-    folio: '',
-    name: '',
-    surname: '',
-    birth_date: '',
-    gender: '',
-    civil_status: '',
-    address: '',
-    estate: '',
-    foreign: 0,
-    phone: '',
-    occupation: '',
-    last_studies: '',
-    area_id: '',
+    folio: "",
+    name: "",
+    surname: "",
+    birth_date: "",
+    gender: "",
+    civil_status: "",
+    address: "",
+    estate: "",
+    foreign: false,
+    phone: "",
+    occupation: "",
+    last_studies: "",
+    area_id: "",
+    disability_type: "",
+    disability_description: "",
+    isDisabled: false,
+
+    tutor1_name: "",
+    tutor1_relationship: "",
+    tutor1_phone: "",
+    tutor2_name: "",
+    tutor2_relationship: "",
+    tutor2_phone: "",
+    isMinor: false,
   });
+  const [showTutors, setShowTutors] = useState(false);
+  const [photo, setPhoto] = useState(null); // Agregado
+  const [addressProof, setAddressProof] = useState(null); // Agregado
+  const [idCard, setIdCard] = useState(null); // Agregado
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [addressProofName, setAddressProofName] = useState(null);
+  const [idCardName, setIdCardName] = useState(null);
+  const [areas, setAreas] = useState([]);
+  const [notification, setNotification] = useState({ open: false, message: "", type: "success" });
 
-  const [photo, setPhoto] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(''); // Para previsualización de la imagen
-  const [addressProof, setAddressProof] = useState(null);
-  const [idCard, setIdCard] = useState(null);
-  const [notification, setNotification] = useState({ open: false, message: '', type: 'success' });
+  useEffect(() => {
+    // Fetch persona data by ID
+    
+    axios
+      .get(`http://localhost:3001/api/personas/${id}`)
+      .then((response) => {
+        const person = response.data;
+        const formattedDate = person.birth_date
+        ? new Date(person.birth_date).toISOString().split("T")[0]
+        : "";
+        setFormData({
+          ...formData,
+          folio: person.folio,
+          name: person.name,
+          surname: person.surname,
+          birth_date: formattedDate,
+          gender: person.gender,
+          civil_status: person.civil_status,
+          address: person.address,
+          estate: person.estate,
+          tutor1_name: person.tutors?.[0]?.name || '',
+          tutor1_relationship: person.tutors?.[0]?.relationship || '',
+          tutor1_phone: person.tutors?.[0]?.phone || '',
+          tutor2_name: person.tutors?.[1]?.name || '',
+          tutor2_relationship: person.tutors?.[1]?.relationship || '',
+          tutor2_phone: person.tutors?.[1]?.phone || '',
+          phone: person.phone,
+          occupation: person.occupation,
+          last_studies: person.last_studies,
+          area_id: person.area_id,
+          disability_type: person.disability?.disability_type || '',
+          disability_description: person.disability?.description || '',
+          isDisabled: !!person.disability, 
+          isMinor: person.is_minor === 1, // Convierte a booleano
+          foreign: person.foreign === 1, // Convierte a booleano
+        });
+        setPhotoPreview(person.photo ? `data:image/jpeg;base64,${person.photo}` : null);
+        setAddressProofName(person.address_proof ? 'Comprobante subido' : null);
+        setIdCardName(person.id_card ? 'Identificación subida' : null);
+        
+      })
 
-  // Mensajes para los nombres de archivos subidos
-  const [addressProofName, setAddressProofName] = useState('');
-  const [idCardName, setIdCardName] = useState('');
+      .catch((error) => console.error("Error fetching person data:", error));
 
-  const handleChange = (e) => {
-    const { name, value } = e.target; // Desestructura correctamente el evento
+  // Fetch tutors by main_persona_id
+  axios.get(`http://localhost:3001/api/tutors/${id}`)
+    .then((response) => {
+      const tutors = response.data;
+      setFormData((prev) => ({
+        ...prev,
+        tutor1_name: tutors[0]?.name || "",
+        tutor1_relationship: tutors[0]?.relationship || "",
+        tutor1_phone: tutors[0]?.phone || "",
+        tutor2_name: tutors[1]?.name || "",
+        tutor2_relationship: tutors[1]?.relationship || "",
+        tutor2_phone: tutors[1]?.phone || "",
+      }));
+    })
+    .catch((error) => console.error("Error fetching tutors data:", error));
+    // Fetch areas for dropdown
+    axios
+      .get("http://localhost:3001/api/areas")
+      .then((response) => setAreas(response.data))
+      .catch((error) => console.error("Error fetching areas:", error));
+  }, [id]);
 
-    if (name === 'phone') {
-      const regex = /^[0-9]*$/; // Asegúrate de que solo números se permitan en el campo teléfono
-      if (!regex.test(value)) {
-        return;
-      }
-    }
-  
-    setFormData((prev) => ({ ...prev, [name]: value })); // Actualiza dinámicamente el estado
 
-    if (name === 'birth_date') {
-      const birthDate = new Date(value);
-      const currentDate = new Date();
-      const age = currentDate.getFullYear() - birthDate.getFullYear();
-      const isMinor =
-        currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
-  
-      setFormData((prev) => ({ ...prev, isMinor }));
-    }
-  };
+
+
+
+
+
 
   const onDropPhoto = (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -69,8 +142,30 @@ function RegisterPersonForm() {
       return;
     }
     setPhoto(file);
-    setPhotoPreview(URL.createObjectURL(file)); // Previsualizar la imagen
+    setPhotoPreview(URL.createObjectURL(file));
   };
+  
+  const onDropAddressProof = (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (file && file.type !== 'application/pdf') {
+      setNotification({ open: true, message: 'Error: El comprobante de domicilio debe ser un PDF.', type: 'error' });
+      return;
+    }
+    setAddressProof(file);
+    setAddressProofName(file.name);
+  };
+  
+  const onDropIdCard = (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (file && file.type !== 'application/pdf') {
+      setNotification({ open: true, message: 'Error: La identificación debe ser un PDF.', type: 'error' });
+      return;
+    }
+    setIdCard(file);
+    setIdCardName(file.name);
+  };
+  
+
 
   const { getRootProps: getRootPhotoProps, getInputProps: getInputPhotoProps } = useDropzone({
     onDrop: onDropPhoto,
@@ -80,17 +175,7 @@ function RegisterPersonForm() {
       setNotification({ open: true, message: 'Error: La foto debe ser PNG, JPG o GIF y no debe exceder los 10 MB.', type: 'error' });
     },
   });
-
-  const onDropAddressProof = (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (file && file.type !== 'application/pdf') {
-      setNotification({ open: true, message: 'Error: El comprobante de domicilio debe ser un PDF.', type: 'error' });
-      return;
-    }
-    setAddressProof(file);
-    setAddressProofName(file.name); // Mostrar el nombre del archivo subido
-  };
-
+  
   const { getRootProps: getRootAddressProofProps, getInputProps: getInputAddressProofProps } = useDropzone({
     onDrop: onDropAddressProof,
     accept: { 'application/pdf': ['.pdf'] },
@@ -99,17 +184,7 @@ function RegisterPersonForm() {
       setNotification({ open: true, message: 'Error: El archivo debe ser un PDF y no debe exceder los 10 MB.', type: 'error' });
     },
   });
-
-  const onDropIdCard = (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (file && file.type !== 'application/pdf') {
-      setNotification({ open: true, message: 'Error: La identificación debe ser un PDF.', type: 'error' });
-      return;
-    }
-    setIdCard(file);
-    setIdCardName(file.name); // Mostrar el nombre del archivo subido
-  };
-
+  
   const { getRootProps: getRootIdCardProps, getInputProps: getInputIdCardProps } = useDropzone({
     onDrop: onDropIdCard,
     accept: { 'application/pdf': ['.pdf'] },
@@ -118,299 +193,193 @@ function RegisterPersonForm() {
       setNotification({ open: true, message: 'Error: El archivo debe ser un PDF y no debe exceder los 10 MB.', type: 'error' });
     },
   });
+  
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+  
+    setFormData((prev) => {
+      const updatedData = { ...prev, [name]: value };
+  
+      if (name === "birth_date") {
+        const birthDate = new Date(value);
+        const currentDate = new Date();
+        const age = currentDate.getFullYear() - birthDate.getFullYear();
+        const isMinor =
+          currentDate < new Date(birthDate.setFullYear(birthDate.getFullYear() + age)) ? age < 18 : age <= 18;
+          setShowTutors(isMinor);
+        return { ...updatedData, isMinor };
+      }
+  
+      return updatedData;
+    });
+  };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    const formDataToSend = {
+      ...formData,
+      is_disabled: formData.isDisabled ? 1 : 0, // Convierte a 0 o 1
+      is_minor: formData.isMinor ? 1 : 0, // Convierte a 0 o 1
+      foreign: formData.foreign ? 1 : 0, // Convierte a 0 o 1
+    };
+  
+    const formDataObj = new FormData();
+    Object.keys(formData).forEach((key) => formDataObj.append(key, formDataToSend[key]));
+    if (photo) formDataObj.append("photo", photo);
+    if (addressProof) formDataObj.append("address_proof", addressProof);
+    if (idCard) formDataObj.append("id_card", idCard);
+  
+    try {
+      // Actualizar los datos de la persona
+      const response = await axios.put(`http://localhost:3001/api/personas/${id}`, formDataObj, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+  
+    // Actualizar o crear discapacidad
     if (formData.isDisabled) {
-      const formDataToSend = new FormData();
-      formDataToSend.append('disability_type', formData.disability_type || '');
-      formDataToSend.append('disability_description', formData.disability_description || '');
+      await axios.post(`http://localhost:3001/api/disabilities/update`, {
+        main_persona_id: id,
+        disability_type: formData.disability_type,
+        description: formData.disability_description,
+      });
+    } else {
+      await axios.delete(`http://localhost:3001/api/disabilities/${id}`);
     }
-    
-  // Verificar si es menor de edad y si el primer tutor es obligatorio
-  if (formData.isMinor && (!formData.tutor1_name || !formData.tutor1_relationship || !formData.tutor1_phone)) {
-    setNotification({ open: true, message: 'El primer tutor es obligatorio para menores de edad.', type: 'error' });
-    return;
-  }
-
-    if (!formData.name || !formData.surname || !formData.folio) {
-      setNotification({ open: true, message: 'Folio, nombre y apellido son obligatorios.', type: 'error' });
-      return;
-    }
-  
-    if (!photo) {
-      setNotification({ open: true, message: 'La foto es obligatoria.', type: 'error' });
-      return;
-    }
-  
-    if (!addressProof) {
-      setNotification({ open: true, message: 'El comprobante de domicilio es obligatorio.', type: 'error' });
-      return;
-    }
-  
-    if (!idCard) {
-      setNotification({ open: true, message: 'La identificación es obligatoria.', type: 'error' });
-      return;
-    }
-  
-    const formDataToSend = new FormData();
-    formDataToSend.append('folio', formData.folio);
-    formDataToSend.append('name', formData.name);
-    formDataToSend.append('surname', formData.surname);
-    formDataToSend.append('birth_date', formData.birth_date);
-    formDataToSend.append('gender', formData.gender);
-    formDataToSend.append('civil_status', formData.civil_status);
-    formDataToSend.append('address', formData.address);
-    formDataToSend.append('estate', formData.estate);
-    formDataToSend.append('foreign', formData.foreign ? 1 : 0);
-    formDataToSend.append('phone', formData.phone);
-    formDataToSend.append('occupation', formData.occupation);
-    formDataToSend.append('last_studies', formData.last_studies);
-    formDataToSend.append('area_id', formData.area_id);
-    if (photo) {
-      const photoName = `${formData.name}_${formData.surname}.jpg`;
-      formDataToSend.append('photo', photo, photoName);
-    }
-    if (addressProof) {
-      const addressProofName = `${formData.name}_${formData.surname}_comprobante_domicilio.pdf`;
-      formDataToSend.append('address_proof', addressProof, addressProofName);
-    }
-    if (idCard) {
-      const idCardName = `${formData.name}_${formData.surname}_identificacion.pdf`;
-      formDataToSend.append('id_card', idCard, idCardName);
-    }
-    
-  
-    
-  // Datos del primer tutor (obligatorios)
-  formDataToSend.append('tutor1_name', formData.tutor1_name);
-  formDataToSend.append('tutor1_relationship', formData.tutor1_relationship);
-  formDataToSend.append('tutor1_phone', formData.tutor1_phone);
-
-  // Datos del segundo tutor (opcional)
-  if (formData.tutor2_name && formData.tutor2_relationship && formData.tutor2_phone) {
-    formDataToSend.append('tutor2_name', formData.tutor2_name);
-    formDataToSend.append('tutor2_relationship', formData.tutor2_relationship);
-    formDataToSend.append('tutor2_phone', formData.tutor2_phone);
-  }
-    // Resto del envío
-  try {
-    await axios.post('http://localhost:3001/api/crud', formDataToSend, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    setNotification({
-      open: true,
-      message: '¡Perfil guardado con éxito!',
-      type: 'success',
-    });
-  } catch (error) {
-    console.error('Error al registrar persona:', error);
-    setNotification({
-      open: true,
-      message: 'Error al guardar el perfil. Por favor, intenta nuevamente.',
-      type: 'error',
-    });
-  
-      // Verificar si el error es por un folio duplicado
-      if (error.response && error.response.data && error.response.data.error === 'The folio already exists.') {
-        setNotification({
-          open: true,
-          message: 'Error: El folio ya existe. Por favor, genera un folio único.',
-          type: 'error',
-        });
-      } else {
-        setNotification({
-          open: true,
-          message: 'Error al guardar el perfil, revisa la información e inténtalo nuevamente.',
-          type: 'error',
+      // Actualizar o crear los tutores
+      const tutors = [
+        {
+          name: formData.tutor1_name,
+          relationship: formData.tutor1_relationship,
+          phone: formData.tutor1_phone,
+          main_persona_id: id,
+        },
+      ];
+      if (formData.tutor2_name || formData.tutor2_relationship || formData.tutor2_phone) {
+        tutors.push({
+          name: formData.tutor2_name,
+          relationship: formData.tutor2_relationship,
+          phone: formData.tutor2_phone,
+          main_persona_id: id,
         });
       }
+  
+      await axios.post(`http://localhost:3001/api/tutors/update`, tutors);
+  
+      setNotification({
+        open: true,
+        message: "Perfil actualizado correctamente.",
+        type: "success",
+      });
+      navigate(`/perfil/${id}`); // Redirigir al perfil
+    } catch (error) {
+      console.error("Error updating person:", error);
+      setNotification({
+        open: true,
+        message: "Ocurrió un error al actualizar el perfil.",
+        type: "error",
+      });
     }
   };
   
-  useEffect(() => {
-    axios
-      .get('http://localhost:3001/api/areas')
-      .then((response) => {
-        if (response.data.length > 0) {
-          setAreas(response.data);
-        } else {
-          console.error('No se encontraron áreas');
-        }
-      })
-      .catch((error) => {
-        console.error('Error al obtener las áreas:', error.response || error.message);
-        setNotification({
-          open: true,
-          message: 'Error al cargar las áreas',
-          type: 'error',
-        });
-      });
-  }, []);
+  const handleCloseNotification = () => setNotification({ ...notification, open: false });
   
-
-  useEffect(() => {
-    if (selectedAbbreviation) {
-      const newFolio = `${selectedAbbreviation}${String(lastFolioNumber + 1).padStart(4, '0')}`;
-      setFormData(prev => ({ ...prev, folio: newFolio }));
-    }
-  }, [selectedAbbreviation, lastFolioNumber]);
-
-  const handleAreaChange = (event) => {
-    const selectedArea = areas.find(area => area.id === event.target.value);
-    if (selectedArea) {
-      setFormData(prev => ({ ...prev, area_id: selectedArea.id }));
-      setSelectedAbbreviation(selectedArea.abbreviation);
-
-      // Obtener el último folio para esta área
-      axios
-      .get(`http://localhost:3001/api/last-folio/${selectedArea.abbreviation}`)
-      .then((response) => {
-        setLastFolioNumber(response.data.lastFolioNumber || 0);
-      })
-      .catch((error) => {
-        console.error('Error al obtener el último folio:', error.response || error.message);
-        setNotification({
-          open: true,
-          message: `Error al obtener el número de folio: ${error.response?.data?.error || error.message}`,
-          type: 'error'
-        });
-      });
-    
-    }
-  };
-
-
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
-  };
-
   return (
     <form onSubmit={handleSubmit}>
-      <Box sx={{ maxWidth: '800px', margin: '0 auto', p: 4, backgroundColor: '#ffffff', borderRadius: '8px' }}>
-        <Typography variant="h5" mb={3}>Registrar Persona</Typography>
-        <Typography variant="h6" color="primary">
-      Información Básica
-    </Typography>
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel id="area-select-label">Área</InputLabel>
-          <Select
-    labelId="area-select-label"
-    value={formData.area_id}
-    onChange={handleAreaChange}
-    required
-    sx={{
-      mb: 2,
-      backgroundColor: '#ffffff', // Fondo blanco
-      borderRadius: '8px', // Bordes redondeados
-      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-      '&:hover': {
-        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', // Sombra al pasar el mouse
-      },
-      '& .MuiSelect-select': {
-        padding: '15px', // Espaciado interno
-        fontSize: '16px', // Tamaño de fuente
-        fontWeight: '500', // Peso de fuente
-      },
-    }}
-  >
-    {areas.map((area) => (
-      <MenuItem key={area.id} value={area.id}>
-        {area.area_name}
-      </MenuItem>
-    ))}
-  </Select>
-        </FormControl>
+      <Box
+        sx={{
+          maxWidth: "800px",
+          margin: "0 auto",
+          p: 4,
+          backgroundColor: "#ffffff",
+          borderRadius: "8px",
+          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <Typography variant="h5" mb={3}>
+          Editar Persona
+        </Typography>
 
-        {selectedAbbreviation && (
-          <Typography variant="body1" color="secondary" sx={{ mt: 2 }}>
-            Abreviación seleccionada: <strong>{selectedAbbreviation}</strong>
-          </Typography>
-        )}
-
-        {formData.folio && (
-          <TextField
-            label="Folio"
-            name="folio"
-            value={formData.folio}
-            fullWidth
-            InputProps={{ readOnly: true }}
-            sx={{ mt: 2, mb: 2 }}
-          />
-        )}
-
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-          <TextField label="Nombre (s)" name="name" value={formData.name} onChange={handleChange} fullWidth required />
-          <TextField label="Apellidos" name="surname" value={formData.surname} onChange={handleChange} fullWidth required />
-        </Box>
-
-        <TextField
-          type="date"
-          label="Fecha de Nacimiento"
-          name="birth_date"
-          value={formData.birth_date}
-          onChange={handleChange}
-          fullWidth
-          required
-          InputLabelProps={{ shrink: true }}
-          sx={{ mt: 2 }}
-        />
-
-<Box
-  sx={{
-    display: 'flex', // Para colocar elementos en línea
-    justifyContent: 'space-between', // Distribuye espacio entre los elementos
-    gap: 2, // Espaciado entre los selectores
-    mt: 2, // Margen superior
-  }}
->
-<FormControl
-    fullWidth
-    sx={{
-      flex: 1, // Permite que cada selector ocupe el mismo ancho
-      mr: 1, // Margen derecho opcional
-    }}
-  >
-    <InputLabel id="gender-select-label">Género</InputLabel>
-    <Select
-      labelId="gender-select-label"
-      value={formData.gender}
-      onChange={(e) =>
-        setFormData((prev) => ({ ...prev, gender: e.target.value }))
-      }
-      required
-      sx={{
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      <MenuItem value="Femenino">Femenino</MenuItem>
-      <MenuItem value="Masculino">Masculino</MenuItem>
-    </Select>
-  </FormControl>
-
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              name="folio"
+              label="Folio"
+              value={formData.folio}
+              onChange={handleInputChange}
+              fullWidth
+              InputProps={{ readOnly: true }}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              name="name"
+              label="Nombre"
+              value={formData.name}
+              onChange={handleInputChange}
+              fullWidth
+              required
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              name="surname"
+              label="Apellido"
+              value={formData.surname}
+              onChange={handleInputChange}
+              fullWidth
+              required
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              name="birth_date"
+              label="Fecha de Nacimiento"
+              type="date"
+              value={formData.birth_date}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControl fullWidth>
+              <InputLabel>Género</InputLabel>
+              <Select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                required
+              >
+                <MenuItem value="Masculino">Masculino</MenuItem>
+                <MenuItem value="Femenino">Femenino</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6}>
   <FormControl
     fullWidth
     sx={{
       flex: 1, // Permite que cada selector ocupe el mismo ancho
-      ml: 1, // Margen izquierdo opcional
-      mb:1
+      ml: 0, // Margen izquierdo opcional
+      mb: 1,
     }}
   >
     <InputLabel id="civil-status-select-label">Estado Civil</InputLabel>
     <Select
       labelId="civil-status-select-label"
+      name="civil_status"
       value={formData.civil_status}
       onChange={(e) =>
         setFormData((prev) => ({ ...prev, civil_status: e.target.value }))
       }
       required
       sx={{
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+        backgroundColor: "#ffffff",
+        borderRadius: "8px",
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
       }}
     >
       <MenuItem value="Soltero/a">Soltero/a</MenuItem>
@@ -419,20 +388,28 @@ function RegisterPersonForm() {
       <MenuItem value="Viudo/a">Viudo/a</MenuItem>
     </Select>
   </FormControl>
-</Box >
+</Grid> 
 
+
+<Grid item xs={8}>
 <FormControlLabel
-        sx={{ mt: 1 }}
-    control={
-      <Checkbox
-        checked={formData.isDisabled || false}
-        onChange={() =>
-          setFormData((prev) => ({ ...prev, isDisabled: !prev.isDisabled }))
-        }
-      />
-    }
-    label="¿Tiene alguna discapacidad?"
-  />
+ sx={{ mb: 2 }}
+  control={
+    <Checkbox
+      checked={formData.isDisabled || false} // Muestra el valor booleano
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          isDisabled: e.target.checked, // Almacena como booleano
+        }))
+      }
+    />
+  }
+  label="¿Tiene alguna discapacidad?"
+/>
+</Grid>
+
+
 
 {formData.isDisabled && (
   <Box sx={{ mt: 4 }}>
@@ -453,7 +430,7 @@ function RegisterPersonForm() {
         labelId="disability-type-label"
         name="disability_type"
         value={formData.disability_type || ''}
-        onChange={handleChange}
+        onChange={handleInputChange}
         required
       >
         <MenuItem value="Visual">Visual</MenuItem>
@@ -467,7 +444,7 @@ function RegisterPersonForm() {
       label="Descripción de la Discapacidad"
       name="disability_description"
       value={formData.disability_description || ''}
-      onChange={handleChange}
+      onChange={handleInputChange}
       fullWidth
       multiline
       rows={3}
@@ -477,29 +454,51 @@ function RegisterPersonForm() {
 )}
 
 
-<Typography variant="h6" color="primary" sx={{mt: 6}}>
-    Dirección y Contacto
-    </Typography>
 
 
-    <TextField label="Dirección" name="address" value={formData.address} onChange={handleChange} fullWidth required sx={{ mt: 2 }} />
-        <FormControl
+          <Grid item xs={12}>
+            <TextField
+              name="address"
+              label="Dirección"
+              value={formData.address}
+              onChange={handleInputChange}
+              fullWidth
+              required
+            />
+          </Grid>
+          <FormControl
   fullWidth
   sx={{
-    mt: 2,
-    backgroundColor: '#ffffff', // Fondo blanco
-    borderRadius: '8px', // Bordes redondeados
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+    flex: 1,
+    ml: 2, // Margen izquierdo eliminado para alineación
+    mb: 1, // Espaciado inferior
+    mt: 2, // Espaciado superior para separar de otros elementos
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    '.MuiOutlinedInput-notchedOutline': {
+      borderWidth: '1.5px', // Grosor del borde para mayor uniformidad
+    },
+    '.MuiInputLabel-root': {
+      fontSize: '0.95rem', // Tamaño de texto más pequeño para ajustarse mejor
+    },
   }}
 >
   <InputLabel id="estate-select-label">Estado/Provincia</InputLabel>
   <Select
     labelId="estate-select-label"
+    name="estate"
     value={formData.estate}
     onChange={(e) =>
       setFormData((prev) => ({ ...prev, estate: e.target.value }))
     }
     required
+    sx={{
+      borderRadius: '8px',
+      height: '56px', // Altura uniforme para todos los elementos
+      display: 'flex',
+      alignItems: 'center',
+    }}
   >
     <MenuItem value="Ninguno">Ninguno</MenuItem>
     <MenuItem value="Aguascalientes">Aguascalientes</MenuItem>
@@ -537,15 +536,93 @@ function RegisterPersonForm() {
   </Select>
 </FormControl>
 
-<Box
-  sx={{
-    display: 'flex',
-    flexDirection: 'column', // Orientación en columna
-    gap: 2, // Espaciado entre los elementos
-    mt: 2, // Margen superior opcional
-  }}
->
+
+          <Grid item xs={6}>
+            <TextField
+              name="phone"
+              label="Teléfono"
+              value={formData.phone}
+              onChange={handleInputChange}
+              fullWidth
+              required
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControl fullWidth>
+            <InputLabel id="occupation-select-label">Ocupación</InputLabel>
+  <Select
+    labelId="occupation-select-label"
+    name="occupation"
+    value={formData.occupation}
+    onChange={(e) =>
+      setFormData((prev) => ({ ...prev, occupation: e.target.value }))
+    }
+    required
+    
+  > <MenuItem value="Estudiante">Estudiante</MenuItem>
+  <MenuItem value="Empleado">Empleado</MenuItem>
+  <MenuItem value="Independiente">Independiente</MenuItem>
+  <MenuItem value="Desempleado">Desempleado</MenuItem>
+  <MenuItem value="Empresario">Empresario</MenuItem>
+  <MenuItem value="Docente">Docente</MenuItem>
+  <MenuItem value="Ingeniero">Ingeniero</MenuItem>
+  <MenuItem value="Médico">Médico</MenuItem>
+  <MenuItem value="Abogado">Abogado</MenuItem>
+  <MenuItem value="Otro">Otro</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6}>
+  <FormControl
+    fullWidth
+    sx={{
+      mt: 0,
+ 
+      backgroundColor: '#ffffff', // Fondo blanco
+      borderRadius: '8px', // Bordes redondeados
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
+    }}
+  >
+    <InputLabel id="last-studies-select-label">Últimos Estudios</InputLabel>
+    <Select
+      labelId="last-studies-select-label"
+      name="last_studies"
+      value={formData.last_studies || ""} // Asegura que no sea null o undefined
+      onChange={(e) =>
+        setFormData((prev) => ({ ...prev, last_studies: e.target.value }))
+      }
+      required
+      sx={{
+        borderRadius: '8px',
+        height: '56px', // Altura uniforme para todos los elementos
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <MenuItem value="Preescolar">Preescolar</MenuItem>
+      <MenuItem value="Primaria">Primaria</MenuItem>
+      <MenuItem value="Secundaria">Secundaria</MenuItem>
+      <MenuItem value="Preparatoria">Preparatoria</MenuItem>
+      <MenuItem value="Licenciatura">Licenciatura</MenuItem>
+      <MenuItem value="Maestría">Maestría</MenuItem>
+      <MenuItem value="Doctorado">Doctorado</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+
+
+
+
+
+
+
+
+
+
+
+<Grid item xs={8}>
   <FormControlLabel
+   sx={{ mb: 2 }}
     control={
       <Checkbox
         checked={formData.foreign}
@@ -556,146 +633,69 @@ function RegisterPersonForm() {
     }
     label="¿Es extranjero?"
   />
+</Grid>
+
+
+
+
+
+
+
+
+
+
+
+          <Grid item xs={12}>
+          {/* Subir archivos */}
+          <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
+  Documentos
+</Typography>
+
+{/* Foto */}
+<Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
+  <input {...getInputPhotoProps()} />
+  {photoPreview ? (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <img src={photoPreview} alt="Vista previa" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+      <Typography variant="body1" color="primary" sx={{ mt: 2 }}>
+        Haz clic o arrastra para cambiar la foto
+      </Typography>
+    </Box>
+  ) : (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <InsertPhoto sx={{ fontSize: 80, color: '#ccc' }} />
+      <Typography variant="body1" color="primary">Sube una imagen o arrástrala aquí</Typography>
+      <Typography variant="caption" color="textSecondary">PNG, JPG, GIF hasta 10MB</Typography>
+    </Box>
+  )}
 </Box>
 
-
-
-<Box
-  sx={{
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 2,
-    mt: 2,
-  }}
->
-  <TextField
-    label="Teléfono"
-    name="phone"
-    value={formData.phone}
-    onChange={handleChange}
-    fullWidth
-    required
-    sx={{mb:6}}
-  />
+{/* Comprobante de domicilio */}
+<Box {...getRootAddressProofProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
+  <input {...getInputAddressProofProps()} />
+  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <FolderCopyIcon sx={{ fontSize: 80, color: '#ccc' }} />
+    <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Comprobante de Domicilio)</Typography>
+    <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
+    {addressProofName && <Typography variant="body2" color="textPrimary">Archivo subido: {addressProofName}</Typography>}
+  </Box>
 </Box>
 
-
-<Typography variant="h6" color="primary" sx={{mt: 2}}>
-Estudios y Ocupación
-    </Typography>
-
-
-
-    <Box sx={{mt: 2}}>
-  <FormControl
-    fullWidth
-    sx={{
-      backgroundColor: '#ffffff', // Fondo blanco
-      borderRadius: '8px', // Bordes redondeados
-      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-    }}
-  >
-    <InputLabel id="occupation-select-label">Ocupación</InputLabel>
-    <Select
-      labelId="occupation-select-label"
-      value={formData.occupation}
-      onChange={(e) =>
-        setFormData((prev) => ({ ...prev, occupation: e.target.value }))
-      }
-      required
-    >
-      <MenuItem value="Estudiante">Estudiante</MenuItem>
-      <MenuItem value="Empleado">Empleado</MenuItem>
-      <MenuItem value="Independiente">Independiente</MenuItem>
-      <MenuItem value="Desempleado">Desempleado</MenuItem>
-      <MenuItem value="Empresario">Empresario</MenuItem>
-      <MenuItem value="Docente">Docente</MenuItem>
-      <MenuItem value="Ingeniero">Ingeniero</MenuItem>
-      <MenuItem value="Médico">Médico</MenuItem>
-      <MenuItem value="Abogado">Abogado</MenuItem>
-      <MenuItem value="Otro">Otro</MenuItem>
-    </Select>
-  </FormControl>
+{/* Identificación */}
+<Box {...getRootIdCardProps()} sx={{ border: '1.9px dashed #ccc', padding: '40px', textAlign: 'center', marginTop: '20px', borderRadius: '16px', mb: 6 }}>
+  <input {...getInputIdCardProps()} />
+  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <RecentActorsIcon sx={{ fontSize: 80, color: '#ccc' }} />
+    <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Identificación)</Typography>
+    <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
+    {idCardName && <Typography variant="body2" color="textPrimary">Archivo subido: {idCardName}</Typography>}
+  </Box>
 </Box>
-
-
-<FormControl
-  fullWidth
-  sx={{
-    mt: 2,
-    mb:6,
-    backgroundColor: '#ffffff', // Fondo blanco
-    borderRadius: '8px', // Bordes redondeados
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Sombra
-  }}
->
-  <InputLabel id="last-studies-select-label">Últimos Estudios</InputLabel>
-  <Select
-    labelId="last-studies-select-label"
-    value={formData.last_studies}
-    onChange={(e) =>
-      setFormData((prev) => ({ ...prev, last_studies: e.target.value }))
-    }
-    required
-  > 
-    <MenuItem value="Preescolar">Preescolar</MenuItem>
-    <MenuItem value="Primaria">Primaria</MenuItem>
-    <MenuItem value="Secundaria">Secundaria</MenuItem>
-    <MenuItem value="Preparatoria">Preparatoria</MenuItem>
-    <MenuItem value="Licenciatura">Licenciatura</MenuItem>
-    <MenuItem value="Maestría">Maestría</MenuItem>
-    <MenuItem value="Doctorado">Doctorado</MenuItem>
-  </Select>
-</FormControl>
-
-
-
-<Typography variant="h6" color="primary" sx={{mt: 2}}>
-Documentos
-    </Typography>
-    <Box {...getRootPhotoProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
-          <input {...getInputPhotoProps()} />
-          {photoPreview ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <img src={photoPreview} alt="Vista previa" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
-              <Typography variant="body1" color="primary" sx={{ mt: 2 }}>Haz clic o arrastra para cambiar la foto</Typography>
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <InsertPhoto sx={{ fontSize: 80, color: '#ccc' }} />
-              <Typography variant="body1" color="primary">Sube una imagen o arrástrala aquí</Typography>
-              <Typography variant="caption" color="textSecondary">PNG, JPG, GIF hasta 10MB</Typography>
-            </Box>
-          )}
-        </Box>
-       
+</Grid>
 
 
 
 
-
-        <Box {...getRootAddressProofProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px' }}>
-          <input {...getInputAddressProofProps()} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <FolderCopyIcon sx={{ fontSize: 80, color: '#ccc' }} />
-            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Comprobante de Domicilio)</Typography>
-            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
-            {addressProofName && <Typography variant="body2" color="textPrimary">Archivo subido: {addressProofName}</Typography>}
-          </Box>
-        </Box>
-
-        <Box {...getRootIdCardProps()} sx={{ border: '1.9px dashed #ccc', padding: '20px', textAlign: 'center', marginTop: '20px', borderRadius: '16px', mb: 6 }}>
-          <input {...getInputIdCardProps()} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <RecentActorsIcon sx={{ fontSize: 80, color: '#ccc' }} />
-            <Typography variant="body1" color="primary">Sube un PDF o arrástralo aquí (Identificación)</Typography>
-            <Typography variant="caption" color="textSecondary">PDF hasta 10MB</Typography>
-            {idCardName && <Typography variant="body2" color="textPrimary">Archivo subido: {idCardName}</Typography>}
-          </Box>
-        </Box>
-
-
-    
 {formData.isMinor && (
   <Box sx={{ mt: 4 }}>
     <Typography variant="h6" color="primary">
@@ -707,7 +707,7 @@ Documentos
         label="Nombre del Primer Tutor"
         name="tutor1_name"
         value={formData.tutor1_name || ''}
-        onChange={handleChange}
+        onChange={handleInputChange}
         fullWidth
         required
       />
@@ -715,7 +715,7 @@ Documentos
         label="Parentesco"
         name="tutor1_relationship"
         value={formData.tutor1_relationship || ''}
-        onChange={handleChange}
+        onChange={handleInputChange}
         fullWidth
         required
       />
@@ -727,7 +727,7 @@ Documentos
       onChange={(e) => {
         const regex = /^[0-9]*$/;
         if (regex.test(e.target.value)) {
-          handleChange(e);
+          handleInputChange(e);
         }
       }}
       fullWidth
@@ -745,14 +745,14 @@ Documentos
           label="Nombre del Segundo Tutor"
           name="tutor2_name"
           value={formData.tutor2_name || ''}
-          onChange={handleChange}
+          onChange={handleInputChange}
           fullWidth
         />
         <TextField
           label="Parentesco"
           name="tutor2_relationship"
           value={formData.tutor2_relationship || ''}
-          onChange={handleChange}
+          onChange={handleInputChange}
           fullWidth
         />
       </Box>
@@ -763,7 +763,7 @@ Documentos
         onChange={(e) => {
           const regex = /^[0-9]*$/;
           if (regex.test(e.target.value)) {
-            handleChange(e);
+            handleInputChange(e);
           }
         }}
         fullWidth
@@ -773,34 +773,25 @@ Documentos
   </Box>
 )}
 
-       
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-          <Button variant="outlined">Cancelar</Button>
-          <Button type="submit" variant="contained" color="primary">Guardar</Button>
-        </Box>
+
+
+          <Grid item xs={12}>
+            <Button type="submit" variant="contained" color="primary" fullWidth>
+              Actualizar
+            </Button>
+          </Grid>
+        </Grid>
       </Box>
 
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
         onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert
-          severity={notification.type}
-          sx={{
-            width: '100%',
-            backgroundColor: '#ffffff',
-            color: '#333',
-            borderRadius: '16px',
-            boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.5)',
-          }}
-        >
-          {notification.message}
-        </Alert>
+        <Alert severity={notification.type}>{notification.message}</Alert>
       </Snackbar>
     </form>
   );
-}
+};
 
-export default RegisterPersonForm;
+export default CrudEditForm;
