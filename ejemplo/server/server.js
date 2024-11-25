@@ -7,7 +7,8 @@ const multer = require('multer');
 const bcrypt = require('bcrypt'); 
 const app = express();
 const cron = require('node-cron');
-const Tutor = require('./models/Tutor');
+
+
 
 app.use(cors());
 app.use(express.json());
@@ -32,41 +33,6 @@ db.connect((err) => {
 
 
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // Ajusta según la configuración de tu base de datos
-
-const Tutor = sequelize.define('Tutor', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  relationship: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  phone: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  main_persona_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'main_persona',
-      key: 'id',
-    },
-  },
-}, {
-  tableName: 'tutors',
-  timestamps: false,
-});
-
-module.exports = Tutor;
 
 
 
